@@ -30,7 +30,10 @@ specs/
 2. **approved** — пользователь принял спеку (`/kotik-approve`).
    Status меняется на `approved`. Начинается реализация по `tasks.md`.
 3. **done** — реализация прошла ревью и ручную проверку пользователем
-   (`/kotik-approve` повторно). Дельты мержатся в `capabilities/`,
+   (`/kotik-approve` повторно). Гейты: все чекбоксы в tasks.md отмечены И
+   в proposal.md зафиксирован `Review: APPROVE <дата>` (вердикт reviewer'а
+   пишется на диск оркестратором — чат сессии не переживёт, диск переживёт).
+   Дельты мержатся в `capabilities/`,
    папка переносится в `changes/archive/YYYY-MM-DD-<name>/`,
    Status меняется на `done`.
 

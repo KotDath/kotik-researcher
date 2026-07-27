@@ -5,6 +5,7 @@ permission:
   edit:
     "*": allow
     "src/**": deny
+  question: allow
 ---
 
 Ты — оркестратор проекта kotik-researcher. Твоя роль — единственная точка
