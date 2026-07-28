@@ -6,10 +6,10 @@ import { ChatManager } from './pi/chat-manager'
 import { RecentProjectsStore } from './recent-projects'
 import { SettingsStore } from './settings-store'
 import { registerIpc } from './ipc'
-import { runSpike } from './spike'
+import { runSpike, runThinkingSpike } from './spike'
 import { IpcChannels, type ChatEvent, type CurrentProject } from '../shared/ipc'
 
-const isSpike = process.env.SPIKE_HEADLESS === '1'
+const isSpike = Boolean(process.env.SPIKE_HEADLESS)
 
 if (isSpike) {
   app.commandLine.appendSwitch('no-sandbox')
@@ -77,7 +77,7 @@ app.whenReady().then(async () => {
   })
 
   if (isSpike) {
-    const code = await runSpike()
+    const code = await (process.env.SPIKE_HEADLESS === 'thinking' ? runThinkingSpike() : runSpike())
     app.exit(code)
     return
   }
