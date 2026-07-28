@@ -33,11 +33,16 @@ Approve активируется неявно, а переходы необра�
 
 1. Сменить Status на `approved`.
 2. Делегировать implementer реализацию (бриф: путь к change, группы задач,
-   контекст из design.md и decisions.md).
-3. Когда implementer закончит — делегировать reviewer проверку.
-4. CHANGES_REQUESTED → находки implementer'у на доработку, затем снова
-   reviewer. До APPROVE, максимум 3 цикла, дальше — эскалация пользователю.
-   Каждый CHANGES_REQUESTED — сигнал рефлексии, запомнить.
+   контекст из design.md и decisions.md). Зафиксировать task_id его сессии
+   строкой в decisions.md change.
+3. Когда implementer закончит — делегировать reviewer проверку (task_id
+   тоже фиксировать в decisions.md).
+4. CHANGES_REQUESTED → находки implementer'у на доработку (тот же
+   implementer: task_id из decisions.md), затем снова reviewer (тот же
+   reviewer, его task_id). До APPROVE, максимум 3 цикла, дальше — эскалация
+   пользователю. Финальное приёмочное ревью после 2+ циклов доработки —
+   свежий reviewer без task_id (защита от anchor bias). Каждый
+   CHANGES_REQUESTED — сигнал рефлексии, запомнить.
 5. После APPROVE — зафиксировать вердикт на диске: строка
    `Review: APPROVE YYYY-MM-DD` в proposal.md (заменив прошлую строку
    Review, если была; CHANGES_REQUESTED фиксировать аналогично). Вердикт

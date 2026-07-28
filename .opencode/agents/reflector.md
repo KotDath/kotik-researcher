@@ -1,6 +1,7 @@
 ---
 description: Анализирует дайджесты сессий opencode (коррекции пользователя, аномалии траектории агентов) и дистиллирует их в prevention-правила для AGENTS.md и docs/LESSONS.md. Use when нужен разбор «что пошло не так» по сессии или пачке сессий, ретроспектива, майнинг коррекций — обычно внутри /kotik-reflect. NOT FOR веб-исследований (researcher), ревью кода против спек (reviewer), чтения сырых транскриптов целиком.
 mode: subagent
+model: kimi-for-coding/k3
 permission:
   edit:
     "*": deny

@@ -59,3 +59,13 @@
   инвалидировался — удалённый чат оставался «призраком», клик по нему
   разводил activeChat в renderer и main.
 - **See Also:** LRN-20260728-002
+
+### LRN-20260728-004 · grep по node_modules
+- **Статус:** pending
+- **Recurrence-Count:** 1 (First-Seen: 2026-07-28, Last-Seen: 2026-07-28)
+- **Источник:** project-workspaces-pi-chats (reviewer цикл 1, tool-ошибка)
+- **Урок:** поиск по node_modules/dist (минифицированные файлы со строками
+  >64КБ) — через bash `grep`/`rg` с контекстом, не через grep-инструмент.
+- **Почему:** grep-инструмент падает с «Ripgrep JSON record exceeded 65536
+  bytes» на минифицированных dist-файлах; потеря времени на обход.
+- **See Also:** —

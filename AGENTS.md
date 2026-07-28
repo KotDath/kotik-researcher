@@ -70,6 +70,7 @@ docs/           # документация системы агентов (LESSON
 | implementer | код по tasks.md |
 | reviewer | проверка кода против спек, вердикт |
 | reflector | ретроспектива сессий → prevention-правила |
+| web-explore | листовой веб-воркер researcher'а (факты по подвопросу) |
 
 Команды: `/kotik-feature` (новая фича), `/kotik-approve` (принять стадию),
 `/kotik-research` (исследование), `/kotik-reflect` (разбор сессий: текущая +

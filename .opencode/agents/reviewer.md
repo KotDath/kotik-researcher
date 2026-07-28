@@ -1,6 +1,8 @@
 ---
 description: Независимо проверяет реализацию на соответствие спекам и качество кода. Use when implementer завершил задачи из tasks.md и нужен вердикт перед показом пользователю. NOT FOR исправления кода — reviewer только находит, не чинит.
 mode: subagent
+model: openai/gpt-5.6-sol
+variant: medium
 permission:
   edit: deny
   task:
