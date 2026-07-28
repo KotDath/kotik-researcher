@@ -1,5 +1,5 @@
 Status: approved
-Review: CHANGES_REQUESTED 2026-07-28
+Review: APPROVE 2026-07-28
 
 # Proposal: chat-reasoning-stream
 

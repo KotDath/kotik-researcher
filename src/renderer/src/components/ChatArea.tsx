@@ -13,6 +13,9 @@ let localId = 0
 const nextLocalId = (): string => `local-${localId++}`
 
 function appendDelta(items: FeedItem[], delta: string): FeedItem[] {
+  // провайдеры шлёт пустые text_delta (OpenAI-чанки content:'' при tool_calls) —
+  // пустой assistant-пузырь с бордером в ленте не нужен
+  if (!delta) return items
   const last = items[items.length - 1]
   if (last?.kind === 'assistant' && last.streaming) {
     return [...items.slice(0, -1), { ...last, text: last.text + delta }]
@@ -23,6 +26,8 @@ function appendDelta(items: FeedItem[], delta: string): FeedItem[] {
 function closeStreaming(items: FeedItem[]): FeedItem[] {
   const last = items[items.length - 1]
   if (last?.kind === 'assistant' && last.streaming) {
+    // пузырь, не получивший текста (только пустые дельты), удаляем, а не закрываем
+    if (!last.text) return items.slice(0, -1)
     return [...items.slice(0, -1), { ...last, streaming: false }]
   }
   return items
@@ -89,6 +94,9 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
   const [sendError, setSendError] = useState<string | null>(null)
   const lastSeqRef = useRef(0)
   const feedRef = useRef<HTMLDivElement>(null)
+  // auto-scroll прилипает к низу, только пока пользователь сам у низа;
+  // иначе thinking_delta пинят ленту и ручная прокрутка «залипает»
+  const stickToBottomRef = useRef(true)
   // гонка snapshot/event (review-fix цикла 3): события, пришедшие, пока IPC-запрос
   // snapshot в полёте, буферизуются и применяются поверх snapshot по seq —
   // иначе callback snapshot перезаписал бы их старым состоянием (вариант «б»
@@ -232,7 +240,9 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
   }, [file, registerListener, applyEvent])
 
   useEffect(() => {
-    feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight })
+    if (stickToBottomRef.current) {
+      feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight })
+    }
   }, [items, retrying])
 
   const send = useCallback(async (): Promise<void> => {
@@ -240,6 +250,7 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
     if (!text) return
     setInput('')
     setSendError(null)
+    stickToBottomRef.current = true
     // оптимистичный пузырь: сообщение видно сразу, в т.ч. когда встаёт в очередь (followUp)
     setItems((prev) => [...prev, { kind: 'user', id: nextLocalId(), text }])
     const res = await window.api.messages.send(text)
@@ -259,7 +270,14 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
 
   return (
     <main className="chat">
-      <div className="chat-feed" ref={feedRef}>
+      <div
+        className="chat-feed"
+        ref={feedRef}
+        onScroll={(e) => {
+          const el = e.currentTarget
+          stickToBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+        }}
+      >
         {items.length === 0 && (
           <div className="chat-placeholder">Напишите сообщение, чтобы начать диалог</div>
         )}
