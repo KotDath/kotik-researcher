@@ -3,7 +3,9 @@ import { mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createAgentSession, ModelRuntime, SessionManager } from '@earendil-works/pi-coding-agent'
 import { dataPaths } from './paths'
+import { buildFeedItems } from './pi/chat-manager'
 import { ChatManager } from './pi/chat-manager'
+import { ThinkingDurationsStore } from './thinking-durations'
 import type { SettingsStore } from './settings-store'
 import type { AppSettings, ChatEvent } from '../shared/ipc'
 
@@ -400,4 +402,46 @@ export async function runChatManagerSpike(): Promise<number> {
     console.error(`[spike-cm] SPIKE FAIL: ${e instanceof Error ? (e.stack ?? e.message) : e}`)
     return 1
   }
+}
+
+/**
+ * Диагностика (read-only): прогон сессии из FEED_FILE через реальный
+ * buildFeedItems и печать feed items. Ничего не пишет в сессию.
+ * Запуск: SPIKE_HEADLESS=feedump FEED_FILE=/path/to/session.jsonl
+ */
+export async function runFeedDumpSpike(): Promise<number> {
+  const file = process.env.FEED_FILE
+  if (!file) {
+    console.error('[feedump] FEED_FILE не задан')
+    return 2
+  }
+  const sm = SessionManager.open(file)
+  const ctx = sm.buildSessionContext()
+  const durations = new ThinkingDurationsStore()
+  const items = buildFeedItems(ctx.messages, false, (ts, idx) => durations.get(file, ts, idx))
+  for (const item of items) {
+    switch (item.kind) {
+      case 'user':
+        console.log(`USER       ${JSON.stringify(item.text.slice(0, 70))}`)
+        break
+      case 'assistant':
+        console.log(`ASSISTANT  streaming=${item.streaming} ${JSON.stringify(item.text.slice(0, 70))}`)
+        break
+      case 'thinking':
+        console.log(
+          `THINKING   streaming=${item.streaming} durationMs=${item.durationMs} chars=${item.text.length} ${JSON.stringify(item.text.slice(0, 50))}`
+        )
+        break
+      case 'tool':
+        console.log(
+          `TOOL       name=${JSON.stringify(item.toolName)} status=${item.status} ` +
+            `args=${JSON.stringify(item.argsPreview.slice(0, 60))} result=${JSON.stringify((item.resultPreview ?? '').slice(0, 60))}`
+        )
+        break
+      case 'error':
+        console.log(`ERROR      ${item.message}`)
+        break
+    }
+  }
+  return 0
 }

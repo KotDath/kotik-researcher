@@ -535,10 +535,22 @@ body {
 
 .tool-name {
   font-weight: 600;
+  flex-shrink: 0;
+}
+
+.tool-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-size: 0.8rem;
 }
 
 .tool-status {
   margin-left: auto;
+  flex-shrink: 0;
   font-size: 0.78rem;
 }
 
