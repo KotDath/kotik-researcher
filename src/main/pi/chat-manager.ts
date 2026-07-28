@@ -40,8 +40,12 @@ interface ChatHandle {
   retrying: RetryState | null
   lastPromptText: string | null
   errorSentForRun: boolean
-  /** Незакрытая порция reasoning (start был, end нет) — длительность и дедуп retry. */
-  openThinking: { contentIndex: number; startedAt: number } | null
+  /** Незакрытая порция reasoning (start был, end нет) — длительность, дедуп retry,
+   * накопленный текст для snapshot во время стриминга. */
+  openThinking: { contentIndex: number; startedAt: number; text: string } | null
+  /** Завершённые порции, ещё не попавшие в историю (thinking_end был, message_end
+   * нет — partial-сообщение появляется в session.messages только на message_end). */
+  completedThinking: { contentIndex: number; startedAt: number; durationMs: number; text: string }[]
 }
 
 const PREVIEW_LIMIT = 4000
@@ -400,14 +404,39 @@ export class ChatManager {
   snapshot(file: string): ChatSnapshot | null {
     const handle = this.chats.get(file) ?? this.retired.find((h) => h.file === file)
     if (!handle) return null
+    const items = buildFeedItems(handle.session.messages, handle.generating, (messageTimestamp, contentIndex) =>
+      this.durations.get(handle.file, messageTimestamp, contentIndex)
+    )
+    // partial-сообщение появляется в истории только на message_end — живые и
+    // свежезавершённые порции reasoning восстанавливаем из состояния handle,
+    // иначе вернувшийся в чат пользователь потеряет блок, а thinking_delta
+    // уйдут в никуда (renderer ищет streaming-блок для наращивания)
+    for (const done of handle.completedThinking) {
+      if (!done.text.trim()) continue
+      items.push({
+        kind: 'thinking',
+        id: `live-done-${done.contentIndex}`,
+        text: done.text,
+        streaming: false,
+        startedAt: done.startedAt,
+        durationMs: done.durationMs
+      })
+    }
+    if (handle.openThinking) {
+      items.push({
+        kind: 'thinking',
+        id: 'live-open-thinking',
+        text: handle.openThinking.text,
+        streaming: true,
+        startedAt: handle.openThinking.startedAt
+      })
+    }
     return {
       file,
       generating: handle.generating,
       lastSeq: handle.seq,
       retrying: handle.retrying,
-      items: buildFeedItems(handle.session.messages, handle.generating, (messageTimestamp, contentIndex) =>
-        this.durations.get(handle.file, messageTimestamp, contentIndex)
-      )
+      items
     }
   }
 
@@ -648,7 +677,8 @@ export class ChatManager {
       retrying: null,
       lastPromptText,
       errorSentForRun: false,
-      openThinking: null
+      openThinking: null,
+      completedThinking: []
     }
     session.subscribe((event) => this.onSessionEvent(handle, event))
     // per-provider уровень thinking: сохранённый или включённый дефолт (5.1)
@@ -680,6 +710,7 @@ export class ChatManager {
         handle.errorSentForRun = false
         handle.retrying = null
         handle.openThinking = null
+        handle.completedThinking = []
         this.emit(handle, { type: 'agent_start' })
         break
       case 'message_update': {
@@ -689,13 +720,15 @@ export class ChatManager {
         } else if (ev.type === 'thinking_start') {
           // повторный start при незакрытой порции (обрыв + auto-retry): renderer
           // заменит незакрытый блок, а не добавит новый (LRN-20260728-002)
-          handle.openThinking = { contentIndex: ev.contentIndex, startedAt: Date.now() }
+          handle.openThinking = { contentIndex: ev.contentIndex, startedAt: Date.now(), text: '' }
           this.emit(handle, {
             type: 'thinking_start',
             contentIndex: ev.contentIndex,
             startedAt: handle.openThinking.startedAt
           })
         } else if (ev.type === 'thinking_delta') {
+          // текст накапливаем, чтобы snapshot во время стриминга отдал порцию целиком
+          if (handle.openThinking) handle.openThinking.text += ev.delta
           this.emit(handle, { type: 'thinking_delta', contentIndex: ev.contentIndex, delta: ev.delta })
         } else if (ev.type === 'thinking_end') {
           const open = handle.openThinking
@@ -704,6 +737,13 @@ export class ChatManager {
           // partial — тот же объект сообщения, что попадёт в историю: его timestamp
           // стабилен и уникален для сообщения (ключ sidecar, решение в decisions.md)
           this.durations.record(handle.file, ev.partial.timestamp, ev.contentIndex, durationMs)
+          // до message_end порции нет в истории — snapshot подхватит её из completedThinking
+          handle.completedThinking.push({
+            contentIndex: ev.contentIndex,
+            startedAt: open?.startedAt ?? Date.now(),
+            durationMs,
+            text: open?.text ?? ''
+          })
           this.emit(handle, { type: 'thinking_end', contentIndex: ev.contentIndex, durationMs })
         }
         break
@@ -711,6 +751,10 @@ export class ChatManager {
       case 'message_end': {
         const msg = event.message
         if (msg.role === 'user' || msg.role === 'assistant') {
+          if (msg.role === 'assistant') {
+            // сообщение попало в историю — порции теперь соберёт buildFeedItems
+            handle.completedThinking = []
+          }
           this.emit(handle, {
             type: 'message_end',
             role: msg.role,

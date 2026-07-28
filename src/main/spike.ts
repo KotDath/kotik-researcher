@@ -241,8 +241,19 @@ export async function runChatManagerSpike(): Promise<number> {
 
   const events: ChatEvent[] = []
   let onAgentEnd: (() => void) | null = null
+  // mid-run snapshot'ы (review-fix цикла 2): во время reasoning и после
+  // thinking_end, но до message_end
+  const snaps: { midThinking?: ReturnType<ChatManager['snapshot']>; afterEnd?: ReturnType<ChatManager['snapshot']> } = {}
   const chatManager = new ChatManager(fakeStore, (e) => {
     events.push(e)
+    const file = chatManager.getActiveChatFile()
+    if (file && e.type === 'thinking_delta' && !snaps.midThinking) {
+      snaps.midThinking = chatManager.snapshot(file)
+    } else if (file && e.type === 'thinking_end' && !snaps.afterEnd) {
+      // text_delta не подходит: OpenAI-стиль провайдеров шлёт text_delta до
+      // thinking_end (reasoning и текст в одних чанках стрима)
+      snaps.afterEnd = chatManager.snapshot(file)
+    }
     if (e.type === 'agent_end' || e.type === 'error') onAgentEnd?.()
   })
 
@@ -287,6 +298,30 @@ export async function runChatManagerSpike(): Promise<number> {
     }
     const durationMs = ends[0].type === 'thinking_end' ? ends[0].durationMs : -1
     log(`прогон 1: durationMs=${durationMs}`)
+
+    // review-fix цикла 2: snapshot во время стриминга reasoning отдаёт живой блок
+    const midThinking = snaps.midThinking?.items.filter((i) => i.kind === 'thinking').pop()
+    log(
+      `mid-run snapshot (во время reasoning): ${midThinking?.kind === 'thinking' ? `streaming=${midThinking.streaming} chars=${midThinking.text.length} startedAt=${midThinking.startedAt > 0}` : '<нет блока>'}`
+    )
+    if (!midThinking || midThinking.kind !== 'thinking' || !midThinking.streaming || !midThinking.text) {
+      log('SPIKE FAIL: snapshot во время стриминга reasoning не отдал streaming-блок с текстом')
+      return 1
+    }
+    // симметричный случай: порция завершилась до snapshot — закрытый блок с длительностью
+    const afterEnd = snaps.afterEnd?.items.filter((i) => i.kind === 'thinking').pop()
+    log(
+      `mid-run snapshot (после thinking_end): ${afterEnd?.kind === 'thinking' ? `streaming=${afterEnd.streaming} durationMs=${afterEnd.durationMs}` : '<нет блока>'}`
+    )
+    if (
+      !afterEnd ||
+      afterEnd.kind !== 'thinking' ||
+      afterEnd.streaming ||
+      afterEnd.durationMs === undefined
+    ) {
+      log('SPIKE FAIL: snapshot после thinking_end не отдал закрытый блок с длительностью')
+      return 1
+    }
 
     // sidecar: запись (sessionFile, messageTimestamp:contentIndex) → durationMs
     const sidecar = JSON.parse(
