@@ -62,24 +62,24 @@
 
 ## 6. Renderer: блок reasoning
 
-- [ ] 6.1 Компонент `ReasoningBlock.tsx` по паттерну `ToolBlock.tsx`: хедер —
+- [x] 6.1 Компонент `ReasoningBlock.tsx` по паттерну `ToolBlock.tsx`: хедер —
   chevron + 💡 + «Thinking» + длительность; тело — текст reasoning; развёрнут
   при `streaming`, auto-collapse на завершении, из истории всегда свёрнут
-- [ ] 6.2 Тиканье длительности вживую (interval пока `streaming`), фиксация по
+- [x] 6.2 Тиканье длительности вживую (interval пока `streaming`), фиксация по
   `thinking_end`; формат «Thinking · Ns»
-- [ ] 6.3 Обработка `thinking_start/delta/end` в `ChatArea.tsx`: создание/
+- [x] 6.3 Обработка `thinking_start/delta/end` в `ChatArea.tsx`: создание/
   наращивание/закрытие блока; замена незакрытого блока при новом start (дедуп
   retry); закрытие streaming-блока на `agent_end`/`error`
-- [ ] 6.4 Стили `.thinking-*` в styles.css: `--text-dim` для хедера и текста,
+- [x] 6.4 Стили `.thinking-*` в styles.css: `--text-dim` для хедера и текста,
   курсив, тонкая вертикальная линия-отступ слева (border-left); тема не
   меняется
 
 ## 7. Renderer: Settings
 
-- [ ] 7.1 Селектор уровня thinking per provider: список = off +
+- [x] 7.1 Селектор уровня thinking per provider: список = off +
   доступные уровни текущей модели провайдера; настройка видна всегда (в т.ч.
   для модели без поддержки thinking)
-- [ ] 7.2 Сохранение выбора в `thinkingLevels[providerId]` через
+- [x] 7.2 Сохранение выбора в `thinkingLevels[providerId]` через
   `settings:set`; после сохранения renderer перечитывает настройки (явная
   инвалидация, LRN-20260728-003)
 

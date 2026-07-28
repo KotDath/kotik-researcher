@@ -3,7 +3,8 @@ import type {
   AppSettings,
   CustomProviderSettings,
   ProviderInfo,
-  SettingsView as SettingsViewData
+  SettingsView as SettingsViewData,
+  ThinkingLevelSetting
 } from '../../../shared/ipc'
 
 interface Props {
@@ -187,6 +188,46 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
   )
   const filter = modelFilter.trim().toLowerCase()
 
+  /** Селектор уровня thinking per provider: off + уровни текущей модели
+   * (настройка видна всегда, в т.ч. для модели без поддержки thinking). */
+  const renderThinkingLevelField = (providerId: string): React.JSX.Element => {
+    const info = data.providers.find((p) => p.id === providerId)
+    const saved = settings.thinkingLevels?.[providerId]
+    const levels = [
+      ...new Set<ThinkingLevelSetting>([
+        'off',
+        ...((info?.availableThinkingLevels ?? []) as ThinkingLevelSetting[]),
+        ...(saved ? [saved] : [])
+      ])
+    ]
+    return (
+      <label className="settings-field">
+        <span>Уровень thinking</span>
+        <select
+          className="input"
+          value={saved ?? ''}
+          onChange={(e) => {
+            const value = e.target.value
+            setSettings((s) => {
+              if (!s) return s
+              const thinkingLevels = { ...s.thinkingLevels }
+              if (value) thinkingLevels[providerId] = value as ThinkingLevelSetting
+              else delete thinkingLevels[providerId]
+              return { ...s, thinkingLevels }
+            })
+          }}
+        >
+          <option value="">По умолчанию (включённый)</option>
+          {levels.map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
+        </select>
+      </label>
+    )
+  }
+
   return (
     <div className="settings-overlay">
       <div className="settings">
@@ -246,6 +287,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
                     }
                   />
                 </label>
+                {renderThinkingLevelField(providerId)}
               </div>
             )
           })}
@@ -288,6 +330,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
                 {cp.baseUrl} · модели: {cp.models.map((m) => m.id).join(', ')}
                 {cp.apiKey ? ' · ключ задан' : ''}
               </div>
+              {renderThinkingLevelField(cp.id)}
             </div>
           ))}
           <div className="settings-custom-form">

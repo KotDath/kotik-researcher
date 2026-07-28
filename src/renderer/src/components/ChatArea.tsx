@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatEvent, FeedItem, RetryState } from '../../../shared/ipc'
+import ReasoningBlock from './ReasoningBlock'
 import ToolBlock from './ToolBlock'
 
 interface Props {
@@ -23,6 +24,41 @@ function closeStreaming(items: FeedItem[]): FeedItem[] {
   const last = items[items.length - 1]
   if (last?.kind === 'assistant' && last.streaming) {
     return [...items.slice(0, -1), { ...last, streaming: false }]
+  }
+  return items
+}
+
+function startThinking(items: FeedItem[], startedAt: number): FeedItem[] {
+  const last = items[items.length - 1]
+  // обрыв + auto-retry: новый start заменяет незакрытый блок в той же позиции,
+  // дублей в ленте нет (LRN-20260728-002)
+  if (last?.kind === 'thinking' && last.streaming) {
+    return [
+      ...items.slice(0, -1),
+      { ...last, text: '', startedAt, durationMs: undefined }
+    ]
+  }
+  return [
+    ...items,
+    { kind: 'thinking', id: nextLocalId(), text: '', streaming: true, startedAt }
+  ]
+}
+
+function appendThinkingDelta(items: FeedItem[], delta: string): FeedItem[] {
+  const last = items[items.length - 1]
+  if (last?.kind === 'thinking' && last.streaming) {
+    return [...items.slice(0, -1), { ...last, text: last.text + delta }]
+  }
+  return items
+}
+
+function closeThinking(items: FeedItem[], durationMs?: number): FeedItem[] {
+  const last = items[items.length - 1]
+  if (last?.kind === 'thinking' && last.streaming) {
+    return [
+      ...items.slice(0, -1),
+      { ...last, streaming: false, durationMs: durationMs ?? Date.now() - last.startedAt }
+    ]
   }
   return items
 }
@@ -63,8 +99,17 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
         case 'text_delta':
           setItems((prev) => appendDelta(prev, e.delta))
           break
+        case 'thinking_start':
+          setItems((prev) => startThinking(prev, e.startedAt))
+          break
+        case 'thinking_delta':
+          setItems((prev) => appendThinkingDelta(prev, e.delta))
+          break
+        case 'thinking_end':
+          setItems((prev) => closeThinking(prev, e.durationMs))
+          break
         case 'message_end':
-          if (e.role === 'assistant') setItems(closeStreaming)
+          if (e.role === 'assistant') setItems((prev) => closeThinking(closeStreaming(prev)))
           break
         case 'tool_start':
           setItems((prev) => [
@@ -106,14 +151,14 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
         case 'agent_end':
           setGenerating(false)
           setRetrying(null)
-          setItems(closeStreaming)
+          setItems((prev) => closeThinking(closeStreaming(prev)))
           onFeedChanged()
           break
         case 'error':
           setRetrying(null)
           setGenerating(false)
           setItems((prev) => {
-            const closed = closeStreaming(prev)
+            const closed = closeThinking(closeStreaming(prev))
             const last = closed[closed.length - 1]
             const withoutEmpty =
               last?.kind === 'assistant' && last.text === '' ? closed.slice(0, -1) : closed
@@ -177,6 +222,8 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
               )
             case 'tool':
               return <ToolBlock key={item.id} item={item} />
+            case 'thinking':
+              return <ReasoningBlock key={item.id} item={item} />
             case 'error':
               return (
                 <div key={item.id} className="msg msg-error">
