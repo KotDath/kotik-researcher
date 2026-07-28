@@ -15,6 +15,7 @@
 specs/
   capabilities/<name>/spec.md     # текущая правда: что система умеет СЕЙЧАС
   changes/<change-name>/          # активные изменения (kebab-case)
+    vision.md                     # дистиллят vision-интервью + лог Q&A (создаёт ideator)
     proposal.md                   # зачем и что меняем + Status
     design.md                     # как (опционально — для рискованных/кросс-резовых)
     decisions.md                  # дата · контекст · выбор · почему (включая отвергнутое)
@@ -25,7 +26,8 @@ specs/
 
 ## Жизненный цикл change
 
-1. **draft** — создан через `/kotik-feature`: proposal + deltas + tasks.
+1. **draft** — создан через `/kotik-feature`: vision.md (интервью идеатора)
+   → proposal + deltas + tasks.
    В `proposal.md` первая строка: `Status: draft`.
 2. **approved** — пользователь принял спеку (`/kotik-approve`).
    Status меняется на `approved`. Начинается реализация по `tasks.md`.

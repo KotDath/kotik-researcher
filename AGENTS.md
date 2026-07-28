@@ -64,7 +64,8 @@ docs/           # документация системы агентов (LESSON
 | Агент | Роль |
 |---|---|
 | orchestrator | диалог, требования, SDD-цикл, делегирование |
-| spec-writer | оформление спек в `specs/changes/` |
+| ideator | vision-интервью → vision.md |
+| spec-writer | оформление спек по vision.md в `specs/changes/` |
 | researcher | веб-исследования → `research/` |
 | implementer | код по tasks.md |
 | reviewer | проверка кода против спек, вердикт |

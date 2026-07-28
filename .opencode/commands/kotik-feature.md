@@ -1,5 +1,5 @@
 ---
-description: Начать новую фичу через SDD-цикл — глубокое интервью и спека в specs/changes/
+description: Начать новую фичу через SDD-цикл — vision-интервью и спека в specs/changes/
 agent: orchestrator
 ---
 
