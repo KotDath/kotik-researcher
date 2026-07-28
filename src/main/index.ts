@@ -6,7 +6,7 @@ import { ChatManager } from './pi/chat-manager'
 import { RecentProjectsStore } from './recent-projects'
 import { SettingsStore } from './settings-store'
 import { registerIpc } from './ipc'
-import { runSpike, runThinkingSpike } from './spike'
+import { runChatManagerSpike, runSpike, runThinkingSpike } from './spike'
 import { IpcChannels, type ChatEvent, type CurrentProject } from '../shared/ipc'
 
 const isSpike = Boolean(process.env.SPIKE_HEADLESS)
@@ -77,7 +77,13 @@ app.whenReady().then(async () => {
   })
 
   if (isSpike) {
-    const code = await (process.env.SPIKE_HEADLESS === 'thinking' ? runThinkingSpike() : runSpike())
+    const spike =
+      process.env.SPIKE_HEADLESS === 'thinking'
+        ? runThinkingSpike()
+        : process.env.SPIKE_HEADLESS === 'chatmanager'
+          ? runChatManagerSpike()
+          : runSpike()
+    const code = await spike
     app.exit(code)
     return
   }

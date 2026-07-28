@@ -1,8 +1,11 @@
 import { app } from 'electron'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { createAgentSession, ModelRuntime, SessionManager } from '@earendil-works/pi-coding-agent'
 import { dataPaths } from './paths'
+import { ChatManager } from './pi/chat-manager'
+import type { SettingsStore } from './settings-store'
+import type { AppSettings, ChatEvent } from '../shared/ipc'
 
 /**
  * Спайк (tasks 1.3/1.6): изолированный каталог данных pi, сессия в тестовой
@@ -203,6 +206,128 @@ export async function runThinkingSpike(): Promise<number> {
     return 0
   } catch (e) {
     console.error(`[spike-thinking] SPIKE FAIL: ${e instanceof Error ? (e.stack ?? e.message) : e}`)
+    return 1
+  }
+}
+
+/**
+ * Интеграционный спайк chat-reasoning-stream (группы 3–5): прогон через
+ * реальный ChatManager — проброс thinking_* в ChatEvent, sidecar-длительность,
+ * snapshot с thinking-блоком, живое применение уровня (off глушит reasoning
+ * со следующего запроса). Запуск: SPIKE_HEADLESS=chatmanager.
+ */
+export async function runChatManagerSpike(): Promise<number> {
+  const log = (msg: string): void => console.log(`[spike-cm] ${msg}`)
+  const envKey = process.env.DEEPSEEK_API_KEY
+  if (!envKey) {
+    log('SPIKE FAIL: DEEPSEEK_API_KEY не задан в окружении')
+    return 2
+  }
+  const settings: AppSettings = {
+    providers: { deepseek: { apiKey: envKey } },
+    customProviders: [],
+    defaultModel: { providerId: 'deepseek', modelId: 'deepseek-v4-pro' }
+  }
+  // ChatManager читает только get() — подменяем стор, реальный settings.json не трогаем
+  const fakeStore = { get: () => structuredClone(settings) } as unknown as SettingsStore
+
+  const events: ChatEvent[] = []
+  let onAgentEnd: (() => void) | null = null
+  const chatManager = new ChatManager(fakeStore, (e) => {
+    events.push(e)
+    if (e.type === 'agent_end' || e.type === 'error') onAgentEnd?.()
+  })
+
+  const waitRun = (): Promise<void> =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('таймаут прогона 120с')), 120_000)
+      onAgentEnd = () => {
+        clearTimeout(timer)
+        resolve()
+      }
+    })
+
+  try {
+    const dir = join(app.getPath('userData'), 'spike-cm-project')
+    mkdirSync(dir, { recursive: true })
+    await chatManager.openProject(dir)
+    const file = chatManager.getActiveChatFile()
+    log(`chat file: ${file ?? '<none>'}`)
+    if (!file) return 1
+
+    // listProviders: доступные уровни для рендера списка в Settings (5.3)
+    const providers = await chatManager.listProviders()
+    const deepseek = providers.find((p) => p.id === 'deepseek')
+    log(`listProviders deepseek levels: ${JSON.stringify(deepseek?.availableThinkingLevels)}`)
+    if (!deepseek || deepseek.availableThinkingLevels.length === 0) {
+      log('SPIKE FAIL: listProviders не вернул доступные уровни thinking')
+      return 1
+    }
+
+    // прогон 1: дефолтный (включённый) уровень — reasoning должен прийти
+    const firstRun = waitRun()
+    await chatManager.sendMessage('Кратко объясни, почему небо голубое. Ответь по-русски.')
+    await firstRun
+
+    const starts = events.filter((e) => e.type === 'thinking_start').length
+    const deltas = events.filter((e) => e.type === 'thinking_delta').length
+    const ends = events.filter((e) => e.type === 'thinking_end')
+    log(`прогон 1: thinking_start=${starts} delta=${deltas} end=${ends.length}`)
+    if (starts === 0 || ends.length === 0) {
+      log('SPIKE FAIL: thinking-события не дошли через ChatManager')
+      return 1
+    }
+    const durationMs = ends[0].type === 'thinking_end' ? ends[0].durationMs : -1
+    log(`прогон 1: durationMs=${durationMs}`)
+
+    // sidecar: запись (sessionFile, contentIndex) → durationMs
+    const sidecar = JSON.parse(
+      readFileSync(join(dataPaths.userData, 'thinking-durations.json'), 'utf-8')
+    ) as Record<string, Record<string, number>>
+    const sidecarEntry = sidecar[file]
+    log(`sidecar[file]: ${JSON.stringify(sidecarEntry)}`)
+    if (!sidecarEntry || sidecarEntry['0'] === undefined) {
+      log('SPIKE FAIL: sidecar-длительность не записана')
+      return 1
+    }
+
+    // snapshot: thinking-блок перед текстом, с длительностью
+    const snap = chatManager.snapshot(file)
+    const kinds = snap?.items.map((i) => i.kind).join(',')
+    const thinkingItem = snap?.items.find((i) => i.kind === 'thinking')
+    log(`snapshot items: [${kinds}]`)
+    log(
+      `snapshot thinking: durationMs=${thinkingItem?.kind === 'thinking' ? thinkingItem.durationMs : '<нет>'} ` +
+        `chars=${thinkingItem?.kind === 'thinking' ? thinkingItem.text.length : 0}`
+    )
+    if (!thinkingItem || thinkingItem.kind !== 'thinking' || thinkingItem.durationMs === undefined) {
+      log('SPIKE FAIL: в snapshot нет thinking-блока с длительностью')
+      return 1
+    }
+    if (snap && snap.items.findIndex((i) => i.kind === 'thinking') > snap.items.findIndex((i) => i.kind === 'assistant')) {
+      log('SPIKE FAIL: thinking-блок не перед текстом ответа')
+      return 1
+    }
+
+    // прогон 2: живое применение уровня off — reasoning глушится со следующего запроса
+    settings.thinkingLevels = { deepseek: 'off' }
+    await chatManager.applySettings(settings)
+    events.length = 0
+    const secondRun = waitRun()
+    await chatManager.sendMessage('Сколько будет 2+2? Ответь одним числом.')
+    await secondRun
+    const starts2 = events.filter((e) => e.type === 'thinking_start').length
+    log(`прогон 2 (уровень off): thinking_start=${starts2}`)
+    if (starts2 !== 0) {
+      log('SPIKE FAIL: уровень off не применился живьём')
+      return 1
+    }
+
+    await chatManager.disposeAll()
+    log('CHATMANAGER SPIKE SUCCESS')
+    return 0
+  } catch (e) {
+    console.error(`[spike-cm] SPIKE FAIL: ${e instanceof Error ? (e.stack ?? e.message) : e}`)
     return 1
   }
 }

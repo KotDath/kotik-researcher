@@ -13,6 +13,7 @@ interface SettingsFileV1 {
   baseUrls: Record<string, string>
   customProviders: AppSettings['customProviders']
   defaultModel?: { providerId: string; modelId: string }
+  thinkingLevels?: AppSettings['thinkingLevels']
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -80,7 +81,8 @@ export class SettingsStore {
     this.settings = {
       providers,
       customProviders,
-      defaultModel: file.defaultModel
+      defaultModel: file.defaultModel,
+      thinkingLevels: file.thinkingLevels
     }
   }
 
@@ -101,7 +103,8 @@ export class SettingsStore {
       apiKeys,
       baseUrls,
       customProviders,
-      defaultModel: this.settings.defaultModel
+      defaultModel: this.settings.defaultModel,
+      thinkingLevels: this.settings.thinkingLevels
     }
     writeJsonFileAtomic(dataPaths.settingsPath, file, 0o600)
     try {
