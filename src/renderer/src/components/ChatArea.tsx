@@ -1,0 +1,231 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ChatEvent, FeedItem, RetryState } from '../../../shared/ipc'
+import ToolBlock from './ToolBlock'
+
+interface Props {
+  file: string
+  registerListener: (listener: (e: ChatEvent) => void) => () => void
+  onFeedChanged: () => void
+}
+
+let localId = 0
+const nextLocalId = (): string => `local-${localId++}`
+
+function appendDelta(items: FeedItem[], delta: string): FeedItem[] {
+  const last = items[items.length - 1]
+  if (last?.kind === 'assistant' && last.streaming) {
+    return [...items.slice(0, -1), { ...last, text: last.text + delta }]
+  }
+  return [...items, { kind: 'assistant', id: nextLocalId(), text: delta, streaming: true }]
+}
+
+function closeStreaming(items: FeedItem[]): FeedItem[] {
+  const last = items[items.length - 1]
+  if (last?.kind === 'assistant' && last.streaming) {
+    return [...items.slice(0, -1), { ...last, streaming: false }]
+  }
+  return items
+}
+
+function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.Element {
+  const [items, setItems] = useState<FeedItem[]>([])
+  const [generating, setGenerating] = useState(false)
+  const [retrying, setRetrying] = useState<RetryState | null>(null)
+  const [input, setInput] = useState('')
+  const [sendError, setSendError] = useState<string | null>(null)
+  const lastSeqRef = useRef(0)
+  const feedRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    let alive = true
+    void window.api.chats.snapshot(file).then((snap) => {
+      if (!alive || !snap) return
+      lastSeqRef.current = snap.lastSeq
+      setItems(snap.items)
+      setGenerating(snap.generating)
+      setRetrying(snap.retrying)
+    })
+    return () => {
+      alive = false
+    }
+  }, [file])
+
+  useEffect(() => {
+    return registerListener((e) => {
+      if (e.file !== file) return
+      if (e.seq <= lastSeqRef.current) return // дедупликация против снапшота (design.md)
+      lastSeqRef.current = e.seq
+      switch (e.type) {
+        case 'agent_start':
+          setGenerating(true)
+          setSendError(null)
+          break
+        case 'text_delta':
+          setItems((prev) => appendDelta(prev, e.delta))
+          break
+        case 'message_end':
+          if (e.role === 'assistant') setItems(closeStreaming)
+          break
+        case 'tool_start':
+          setItems((prev) => [
+            ...prev,
+            {
+              kind: 'tool',
+              id: nextLocalId(),
+              toolCallId: e.toolCallId,
+              toolName: e.toolName,
+              status: 'running',
+              argsPreview: e.argsPreview
+            }
+          ])
+          break
+        case 'tool_update':
+          setItems((prev) =>
+            prev.map((item) =>
+              item.kind === 'tool' && item.toolCallId === e.toolCallId && item.status === 'running'
+                ? { ...item, resultPreview: e.resultPreview }
+                : item
+            )
+          )
+          break
+        case 'tool_end':
+          setItems((prev) =>
+            prev.map((item) =>
+              item.kind === 'tool' && item.toolCallId === e.toolCallId && item.status === 'running'
+                ? { ...item, status: e.isError ? 'error' : 'done', resultPreview: e.resultPreview }
+                : item
+            )
+          )
+          break
+        case 'auto_retry':
+          setRetrying(e.retrying)
+          break
+        case 'auto_retry_done':
+          setRetrying(null)
+          break
+        case 'agent_end':
+          setGenerating(false)
+          setRetrying(null)
+          setItems(closeStreaming)
+          onFeedChanged()
+          break
+        case 'error':
+          setRetrying(null)
+          setGenerating(false)
+          setItems((prev) => {
+            const closed = closeStreaming(prev)
+            const last = closed[closed.length - 1]
+            const withoutEmpty =
+              last?.kind === 'assistant' && last.text === '' ? closed.slice(0, -1) : closed
+            return [
+              ...withoutEmpty,
+              { kind: 'error', id: nextLocalId(), message: e.message }
+            ]
+          })
+          onFeedChanged()
+          break
+      }
+    })
+  }, [file, registerListener, onFeedChanged])
+
+  useEffect(() => {
+    feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight })
+  }, [items, retrying])
+
+  const send = useCallback(async (): Promise<void> => {
+    const text = input.trim()
+    if (!text) return
+    setInput('')
+    setSendError(null)
+    // оптимистичный пузырь: сообщение видно сразу, в т.ч. когда встаёт в очередь (followUp)
+    setItems((prev) => [...prev, { kind: 'user', id: nextLocalId(), text }])
+    const res = await window.api.messages.send(text)
+    if (!res.ok) {
+      setItems((prev) => [...prev, { kind: 'error', id: nextLocalId(), message: res.error }])
+    }
+  }, [input])
+
+  const retry = useCallback(async (): Promise<void> => {
+    setItems((prev) => {
+      const last = prev[prev.length - 1]
+      return last?.kind === 'error' ? prev.slice(0, -1) : prev
+    })
+    const res = await window.api.messages.retry()
+    if (!res.ok) setSendError(res.error)
+  }, [])
+
+  return (
+    <main className="chat">
+      <div className="chat-feed" ref={feedRef}>
+        {items.length === 0 && (
+          <div className="chat-placeholder">Напишите сообщение, чтобы начать диалог</div>
+        )}
+        {items.map((item) => {
+          switch (item.kind) {
+            case 'user':
+              return (
+                <div key={item.id} className="msg msg-user">
+                  {item.text}
+                </div>
+              )
+            case 'assistant':
+              return (
+                <div key={item.id} className="msg msg-assistant">
+                  {item.text}
+                  {item.streaming && <span className="cursor">▍</span>}
+                </div>
+              )
+            case 'tool':
+              return <ToolBlock key={item.id} item={item} />
+            case 'error':
+              return (
+                <div key={item.id} className="msg msg-error">
+                  <div className="msg-error-title">Ошибка</div>
+                  <div className="msg-error-text">{item.message}</div>
+                  <button className="btn btn-sm" onClick={() => void retry()}>
+                    Повторить
+                  </button>
+                </div>
+              )
+          }
+        })}
+        {retrying && (
+          <div className="retry-banner">
+            Ошибка провайдера, повторная попытка {retrying.attempt}/{retrying.maxAttempts}:{' '}
+            {retrying.errorMessage}
+          </div>
+        )}
+      </div>
+
+      {sendError && <div className="send-error">{sendError}</div>}
+
+      <div className="chat-input-row">
+        <textarea
+          className="input chat-input"
+          placeholder="Сообщение агенту… (Enter — отправить, Shift+Enter — новая строка)"
+          value={input}
+          rows={3}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              void send()
+            }
+          }}
+        />
+        <div className="chat-input-buttons">
+          {generating && (
+            <button className="btn" onClick={() => void window.api.messages.abort()}>
+              Стоп
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={() => void send()} disabled={!input.trim()}>
+            Отправить
+          </button>
+        </div>
+      </div>
+    </main>
+  )
+}
+
+export default ChatArea
