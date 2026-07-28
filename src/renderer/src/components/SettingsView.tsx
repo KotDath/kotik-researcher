@@ -188,7 +188,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
   )
   const filter = modelFilter.trim().toLowerCase()
 
-  /** Селектор уровня thinking per provider: off + уровни текущей модели
+  /** Селектор уровня thinking per provider: СТРОГО off + уровни текущей модели
    * (настройка видна всегда, в т.ч. для модели без поддержки thinking). */
   const renderThinkingLevelField = (providerId: string): React.JSX.Element => {
     const info = data.providers.find((p) => p.id === providerId)
@@ -203,24 +203,27 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
       ])
     ]
     const savedStale = saved !== undefined && !levels.includes(saved)
+    // без сохранённого выбора показываем тот же дефолт, что применит main-side
+    // resolveThinkingLevel: первый из low/medium, иначе первый не-off
+    const effective =
+      saved ??
+      (levels.find((l) => l === 'low' || l === 'medium') ??
+        levels.find((l) => l !== 'off') ??
+        'off')
     return (
       <label className="settings-field">
         <span>Уровень thinking</span>
         <select
           className="input"
-          value={saved ?? ''}
+          value={effective}
           onChange={(e) => {
-            const value = e.target.value
-            setSettings((s) => {
-              if (!s) return s
-              const thinkingLevels = { ...s.thinkingLevels }
-              if (value) thinkingLevels[providerId] = value as ThinkingLevelSetting
-              else delete thinkingLevels[providerId]
-              return { ...s, thinkingLevels }
-            })
+            const value = e.target.value as ThinkingLevelSetting
+            setSettings(
+              (s) =>
+                s && { ...s, thinkingLevels: { ...s.thinkingLevels, [providerId]: value } }
+            )
           }}
         >
-          <option value="">По умолчанию (включённый)</option>
           {levels.map((level) => (
             <option key={level} value={level}>
               {level}

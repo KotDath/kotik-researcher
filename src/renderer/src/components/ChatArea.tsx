@@ -89,24 +89,15 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
   const [sendError, setSendError] = useState<string | null>(null)
   const lastSeqRef = useRef(0)
   const feedRef = useRef<HTMLDivElement>(null)
+  // гонка snapshot/event (review-fix цикла 3): события, пришедшие, пока IPC-запрос
+  // snapshot в полёте, буферизуются и применяются поверх snapshot по seq —
+  // иначе callback snapshot перезаписал бы их старым состоянием (вариант «б»
+  // в decisions.md)
+  const snapPendingRef = useRef(false)
+  const eventBufferRef = useRef<ChatEvent[]>([])
 
-  useEffect(() => {
-    let alive = true
-    void window.api.chats.snapshot(file).then((snap) => {
-      if (!alive || !snap) return
-      lastSeqRef.current = snap.lastSeq
-      setItems(snap.items)
-      setGenerating(snap.generating)
-      setRetrying(snap.retrying)
-    })
-    return () => {
-      alive = false
-    }
-  }, [file])
-
-  useEffect(() => {
-    return registerListener((e) => {
-      if (e.file !== file) return
+  const applyEvent = useCallback(
+    (e: ChatEvent): void => {
       if (e.seq <= lastSeqRef.current) return // дедупликация против снапшота (design.md)
       lastSeqRef.current = e.seq
       switch (e.type) {
@@ -198,8 +189,47 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
           onFeedChanged()
           break
       }
+    },
+    [onFeedChanged]
+  )
+
+  useEffect(() => {
+    let alive = true
+    snapPendingRef.current = true
+    eventBufferRef.current = []
+    void window.api.chats.snapshot(file).then((snap) => {
+      if (!alive) return
+      snapPendingRef.current = false
+      if (!snap) {
+        eventBufferRef.current = []
+        return
+      }
+      lastSeqRef.current = snap.lastSeq
+      setItems(snap.items)
+      setGenerating(snap.generating)
+      setRetrying(snap.retrying)
+      // события, пришедшие за время запроса: применяем поверх snapshot;
+      // уже учтённые в нём отсекаются по seq внутри applyEvent
+      for (const e of eventBufferRef.current) applyEvent(e)
+      eventBufferRef.current = []
     })
-  }, [file, registerListener, onFeedChanged])
+    return () => {
+      alive = false
+      snapPendingRef.current = false
+      eventBufferRef.current = []
+    }
+  }, [file, applyEvent])
+
+  useEffect(() => {
+    return registerListener((e) => {
+      if (e.file !== file) return
+      if (snapPendingRef.current) {
+        eventBufferRef.current.push(e)
+        return
+      }
+      applyEvent(e)
+    })
+  }, [file, registerListener, applyEvent])
 
   useEffect(() => {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight })
