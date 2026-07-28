@@ -193,13 +193,16 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
   const renderThinkingLevelField = (providerId: string): React.JSX.Element => {
     const info = data.providers.find((p) => p.id === providerId)
     const saved = settings.thinkingLevels?.[providerId]
+    // список — только возможности текущей модели; сохранённый уровень, которого
+    // нет в списке (смена модели), показываем выключенной помеченной опцией —
+    // SDK клампит его при применении (decisions.md)
     const levels = [
       ...new Set<ThinkingLevelSetting>([
         'off',
-        ...((info?.availableThinkingLevels ?? []) as ThinkingLevelSetting[]),
-        ...(saved ? [saved] : [])
+        ...((info?.availableThinkingLevels ?? []) as ThinkingLevelSetting[])
       ])
     ]
+    const savedStale = saved !== undefined && !levels.includes(saved)
     return (
       <label className="settings-field">
         <span>Уровень thinking</span>
@@ -223,6 +226,11 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
               {level}
             </option>
           ))}
+          {savedStale && (
+            <option value={saved} disabled>
+              {saved} (не поддерживается моделью)
+            </option>
+          )}
         </select>
       </label>
     )

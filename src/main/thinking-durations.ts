@@ -7,7 +7,10 @@ type DurationsData = Record<string, Record<string, number>>
 /**
  * Sidecar-хранилище длительностей reasoning (design.md, решение 3): pi SDK
  * пишет текст thinking в jsonl-сессию, но не длительность. Ключ —
- * (sessionFile, contentIndex); отсутствие записи = блок без длительности
+ * (sessionFile, messageTimestamp, contentIndex): contentIndex повторяется в
+ * каждом assistant-сообщении, поэтому нужна идентичность сообщения; timestamp
+ * сообщения создаётся один раз при старте стрима и персистируется в jsonl
+ * (подтверждено спайком). Отсутствие записи = блок без длительности
  * (деградация, не ошибка).
  */
 export class ThinkingDurationsStore {
@@ -19,17 +22,29 @@ export class ThinkingDurationsStore {
     return this.cache
   }
 
-  record(sessionFile: string, contentIndex: number, durationMs: number): void {
+  private key(messageTimestamp: number, contentIndex: number): string {
+    return `${messageTimestamp}:${contentIndex}`
+  }
+
+  record(
+    sessionFile: string,
+    messageTimestamp: number,
+    contentIndex: number,
+    durationMs: number
+  ): void {
     const data = this.load()
     this.cache = {
       ...data,
-      [sessionFile]: { ...(data[sessionFile] ?? {}), [contentIndex]: durationMs }
+      [sessionFile]: {
+        ...(data[sessionFile] ?? {}),
+        [this.key(messageTimestamp, contentIndex)]: durationMs
+      }
     }
     writeJsonFileAtomic(this.path, this.cache)
   }
 
-  get(sessionFile: string, contentIndex: number): number | undefined {
-    return this.load()[sessionFile]?.[contentIndex]
+  get(sessionFile: string, messageTimestamp: number, contentIndex: number): number | undefined {
+    return this.load()[sessionFile]?.[this.key(messageTimestamp, contentIndex)]
   }
 
   removeSession(sessionFile: string): void {

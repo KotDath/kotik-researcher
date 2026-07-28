@@ -148,6 +148,7 @@ export async function runThinkingSpike(): Promise<number> {
     let thinkingChars = 0
     let firstStartAt = 0
     let lastEndAt = 0
+    let partialTimestamp = 0
     let text = ''
     let failed: string | null = null
     const indexes = new Set<number>()
@@ -172,7 +173,8 @@ export async function runThinkingSpike(): Promise<number> {
       } else if (ev.type === 'thinking_end') {
         thinkingEnds += 1
         lastEndAt = Date.now()
-        log(`thinking_end contentIndex=${ev.contentIndex}`)
+        partialTimestamp = ev.partial.timestamp
+        log(`thinking_end contentIndex=${ev.contentIndex} partial.timestamp=${partialTimestamp}`)
       } else if (ev.type === 'text_delta') {
         text += ev.delta
       }
@@ -197,6 +199,12 @@ export async function runThinkingSpike(): Promise<number> {
     )
     log(`content в истории: [${contentTypes}]`)
     log(`thinking-частей в истории: ${thinkingParts.length}`)
+    const historyTimestamp =
+      assistant && assistant.role === 'assistant' ? assistant.timestamp : 0
+    log(
+      `timestamp: partial=${partialTimestamp} история=${historyTimestamp} ` +
+        `совпадают=${partialTimestamp === historyTimestamp}`
+    )
     log(`текст ответа: ${JSON.stringify(text.slice(0, 120))}`)
     if (failed) {
       log(`SPIKE FAIL: ${failed}`)
@@ -280,21 +288,24 @@ export async function runChatManagerSpike(): Promise<number> {
     const durationMs = ends[0].type === 'thinking_end' ? ends[0].durationMs : -1
     log(`прогон 1: durationMs=${durationMs}`)
 
-    // sidecar: запись (sessionFile, contentIndex) → durationMs
+    // sidecar: запись (sessionFile, messageTimestamp:contentIndex) → durationMs
     const sidecar = JSON.parse(
       readFileSync(join(dataPaths.userData, 'thinking-durations.json'), 'utf-8')
     ) as Record<string, Record<string, number>>
     const sidecarEntry = sidecar[file]
     log(`sidecar[file]: ${JSON.stringify(sidecarEntry)}`)
-    if (!sidecarEntry || sidecarEntry['0'] === undefined) {
-      log('SPIKE FAIL: sidecar-длительность не записана')
+    const sidecarKeys = Object.keys(sidecarEntry ?? {})
+    if (!sidecarEntry || !sidecarKeys.some((k) => /^\d+:0$/.test(k))) {
+      log('SPIKE FAIL: sidecar-длительность не записана (ожидался ключ <timestamp>:0)')
       return 1
     }
 
-    // snapshot: thinking-блок перед текстом, с длительностью
+    // snapshot: thinking-блок перед текстом, с длительностью (проверяем блок
+    // ТЕКУЩЕГО прогона — последний; старые блоки этой тестовой сессии писались
+    // ещё legacy-форматом ключа sidecar)
     const snap = chatManager.snapshot(file)
     const kinds = snap?.items.map((i) => i.kind).join(',')
-    const thinkingItem = snap?.items.find((i) => i.kind === 'thinking')
+    const thinkingItem = snap?.items.filter((i) => i.kind === 'thinking').pop()
     log(`snapshot items: [${kinds}]`)
     log(
       `snapshot thinking: durationMs=${thinkingItem?.kind === 'thinking' ? thinkingItem.durationMs : '<нет>'} ` +
@@ -320,6 +331,30 @@ export async function runChatManagerSpike(): Promise<number> {
     log(`прогон 2 (уровень off): thinking_start=${starts2}`)
     if (starts2 !== 0) {
       log('SPIKE FAIL: уровень off не применился живьём')
+      return 1
+    }
+
+    // прогон 3: снова включённый уровень — у нового ответа свой ключ sidecar
+    // (review-fix: contentIndex повторяется между сообщениями, ключ включает timestamp)
+    settings.thinkingLevels = { deepseek: 'max' }
+    await chatManager.applySettings(settings)
+    events.length = 0
+    const thirdRun = waitRun()
+    await chatManager.sendMessage('Кратко: почему трава зелёная? Ответь по-русски.')
+    await thirdRun
+    const starts3 = events.filter((e) => e.type === 'thinking_start').length
+    log(`прогон 3 (уровень max): thinking_start=${starts3}`)
+    if (starts3 === 0) {
+      log('SPIKE FAIL: уровень max не применился живьём после off')
+      return 1
+    }
+    const sidecar2 = JSON.parse(
+      readFileSync(join(dataPaths.userData, 'thinking-durations.json'), 'utf-8')
+    ) as Record<string, Record<string, number>>
+    const newFormatKeys = Object.keys(sidecar2[file] ?? {}).filter((k) => /^\d+:\d+$/.test(k))
+    log(`sidecar ключи нового формата: ${JSON.stringify(newFormatKeys)}`)
+    if (newFormatKeys.length < 2) {
+      log('SPIKE FAIL: ответы делят ключ sidecar — длительности перезаписывают друг друга')
       return 1
     }
 

@@ -90,7 +90,7 @@ function errorMessage(e: unknown): string {
 export function buildFeedItems(
   messages: readonly SessionMessage[],
   generating: boolean,
-  getThinkingDuration?: (contentIndex: number) => number | undefined
+  getThinkingDuration?: (messageTimestamp: number, contentIndex: number) => number | undefined
 ): FeedItem[] {
   const items: FeedItem[] = []
   const toolItems = new Map<string, Extract<FeedItem, { kind: 'tool' }>>()
@@ -125,7 +125,7 @@ export function buildFeedItems(
             text: part.thinking,
             streaming: false,
             startedAt: msg.timestamp,
-            durationMs: getThinkingDuration?.(contentIndex)
+            durationMs: getThinkingDuration?.(msg.timestamp, contentIndex)
           })
         } else if (part.type === 'toolCall') {
           flushText()
@@ -405,8 +405,8 @@ export class ChatManager {
       generating: handle.generating,
       lastSeq: handle.seq,
       retrying: handle.retrying,
-      items: buildFeedItems(handle.session.messages, handle.generating, (contentIndex) =>
-        this.durations.get(handle.file, contentIndex)
+      items: buildFeedItems(handle.session.messages, handle.generating, (messageTimestamp, contentIndex) =>
+        this.durations.get(handle.file, messageTimestamp, contentIndex)
       )
     }
   }
@@ -701,7 +701,9 @@ export class ChatManager {
           const open = handle.openThinking
           handle.openThinking = null
           const durationMs = open && open.contentIndex === ev.contentIndex ? Date.now() - open.startedAt : 0
-          this.durations.record(handle.file, ev.contentIndex, durationMs)
+          // partial — тот же объект сообщения, что попадёт в историю: его timestamp
+          // стабилен и уникален для сообщения (ключ sidecar, решение в decisions.md)
+          this.durations.record(handle.file, ev.partial.timestamp, ev.contentIndex, durationMs)
           this.emit(handle, { type: 'thinking_end', contentIndex: ev.contentIndex, durationMs })
         }
         break

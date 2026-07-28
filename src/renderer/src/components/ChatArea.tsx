@@ -28,14 +28,26 @@ function closeStreaming(items: FeedItem[]): FeedItem[] {
   return items
 }
 
+/** Незакрытая порция reasoning в ленте (логически одна): ищем сканированием,
+ * а не «последний item» — после message_end или текста новой попытки retry
+ * блок может оказаться не последним (LRN-20260728-002, review-fix). */
+function findStreamingThinkingIndex(items: FeedItem[]): number {
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (items[i].kind === 'thinking' && (items[i] as { streaming: boolean }).streaming) return i
+  }
+  return -1
+}
+
 function startThinking(items: FeedItem[], startedAt: number): FeedItem[] {
-  const last = items[items.length - 1]
+  const open = findStreamingThinkingIndex(items)
   // обрыв + auto-retry: новый start заменяет незакрытый блок в той же позиции,
   // дублей в ленте нет (LRN-20260728-002)
-  if (last?.kind === 'thinking' && last.streaming) {
+  if (open >= 0) {
+    const item = items[open] as Extract<FeedItem, { kind: 'thinking' }>
     return [
-      ...items.slice(0, -1),
-      { ...last, text: '', startedAt, durationMs: undefined }
+      ...items.slice(0, open),
+      { ...item, text: '', startedAt, durationMs: undefined },
+      ...items.slice(open + 1)
     ]
   }
   return [
@@ -45,22 +57,28 @@ function startThinking(items: FeedItem[], startedAt: number): FeedItem[] {
 }
 
 function appendThinkingDelta(items: FeedItem[], delta: string): FeedItem[] {
-  const last = items[items.length - 1]
-  if (last?.kind === 'thinking' && last.streaming) {
-    return [...items.slice(0, -1), { ...last, text: last.text + delta }]
+  const open = findStreamingThinkingIndex(items)
+  if (open >= 0) {
+    const item = items[open] as Extract<FeedItem, { kind: 'thinking' }>
+    return [...items.slice(0, open), { ...item, text: item.text + delta }, ...items.slice(open + 1)]
   }
   return items
 }
 
+/** Закрывает streaming-блок; пустая порция (redacted/без delta) удаляется —
+ * пустых хедеров в ленте быть не должно (design.md). */
 function closeThinking(items: FeedItem[], durationMs?: number): FeedItem[] {
-  const last = items[items.length - 1]
-  if (last?.kind === 'thinking' && last.streaming) {
-    return [
-      ...items.slice(0, -1),
-      { ...last, streaming: false, durationMs: durationMs ?? Date.now() - last.startedAt }
-    ]
+  const open = findStreamingThinkingIndex(items)
+  if (open < 0) return items
+  const item = items[open] as Extract<FeedItem, { kind: 'thinking' }>
+  if (!item.text.trim()) {
+    return [...items.slice(0, open), ...items.slice(open + 1)]
   }
-  return items
+  return [
+    ...items.slice(0, open),
+    { ...item, streaming: false, durationMs: durationMs ?? Date.now() - item.startedAt },
+    ...items.slice(open + 1)
+  ]
 }
 
 function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.Element {
@@ -109,7 +127,17 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
           setItems((prev) => closeThinking(prev, e.durationMs))
           break
         case 'message_end':
-          if (e.role === 'assistant') setItems((prev) => closeThinking(closeStreaming(prev)))
+          // stopReason error/aborted: порция оборвана — НЕ закрываем блок, чтобы
+          // thinking_start следующей попытки (auto-retry) заменил его, а не
+          // продублировал; закроет финальный agent_end/error (review-fix, находка 2)
+          if (e.role === 'assistant') {
+            setItems((prev) => {
+              const closedText = closeStreaming(prev)
+              return e.stopReason === 'error' || e.stopReason === 'aborted'
+                ? closedText
+                : closeThinking(closedText)
+            })
+          }
           break
         case 'tool_start':
           setItems((prev) => [

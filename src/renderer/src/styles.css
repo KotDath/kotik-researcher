@@ -476,9 +476,13 @@ body {
   text-align: left;
 }
 
-.thinking-header:hover {
+.thinking-header:hover:not(:disabled) {
   background: var(--bg-hover);
   border-radius: 6px;
+}
+
+.thinking-header:disabled {
+  cursor: default;
 }
 
 .thinking-chevron {

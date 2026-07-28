@@ -32,7 +32,9 @@ function ReasoningBlock({ item }: { item: ThinkingItem }): React.JSX.Element {
 
   return (
     <div className="thinking-block">
-      <button className="thinking-header" onClick={() => setOpen(!open)}>
+      {/* во время стриминга блок развёрнут принудительно: ручное сворачивание
+          запрещено, ручное управление — после завершения порции */}
+      <button className="thinking-header" onClick={() => setOpen(!open)} disabled={item.streaming}>
         <span className="thinking-chevron">{open ? '▾' : '▸'}</span>
         <span className="thinking-label">
           💡 Thinking{durationMs !== undefined && ` · ${formatDuration(durationMs)}`}
