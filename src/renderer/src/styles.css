@@ -364,6 +364,13 @@ body {
   gap: 12px;
 }
 
+/* flex-items не сжимаются при переполнении — контейнер скроллится.
+ * Без этого .tool-block (overflow:hidden зануляет min-height:auto) схлопывался
+ * до 2px бордера, когда лента переполняла вьюпорт. */
+.chat-feed > * {
+  flex-shrink: 0;
+}
+
 .chat-placeholder {
   color: var(--text-dim);
   text-align: center;
