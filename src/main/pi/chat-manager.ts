@@ -7,10 +7,12 @@ import {
   type CreateAgentSessionOptions
 } from '@earendil-works/pi-coding-agent'
 import { shell } from 'electron'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { unlink } from 'node:fs/promises'
+import { join } from 'node:path'
 import { dataPaths } from '../paths'
 import type { SettingsStore } from '../settings-store'
+import { ThinkingDurationsStore } from '../thinking-durations'
 import { writeModelsJson } from './models-config'
 import type {
   AppSettings,
@@ -20,7 +22,8 @@ import type {
   DistributiveOmit,
   FeedItem,
   ProviderInfo,
-  RetryState
+  RetryState,
+  ThinkingLevelSetting
 } from '../../shared/ipc'
 
 type AnyModel = NonNullable<CreateAgentSessionOptions['model']>
@@ -37,9 +40,24 @@ interface ChatHandle {
   retrying: RetryState | null
   lastPromptText: string | null
   errorSentForRun: boolean
+  /** Незакрытая порция reasoning (start был, end нет) — длительность и дедуп retry. */
+  openThinking: { contentIndex: number; startedAt: number } | null
 }
 
 const PREVIEW_LIMIT = 4000
+
+/** Дефолт уровня для провайдера без сохранённого выбора: первый из low/medium,
+ * иначе первый включённый (не off) из доступных (дельта llm-provider-settings). */
+function resolveThinkingLevel(
+  saved: ThinkingLevelSetting | undefined,
+  available: readonly string[]
+): ThinkingLevelSetting {
+  if (saved) return saved
+  for (const preferred of ['low', 'medium']) {
+    if (available.includes(preferred)) return preferred as ThinkingLevelSetting
+  }
+  return (available.find((l) => l !== 'off') as ThinkingLevelSetting | undefined) ?? 'off'
+}
 
 function preview(value: unknown): string {
   let text: string
@@ -69,7 +87,11 @@ function errorMessage(e: unknown): string {
 }
 
 /** Собирает ленту чата из истории сообщений сессии pi. */
-export function buildFeedItems(messages: readonly SessionMessage[], generating: boolean): FeedItem[] {
+export function buildFeedItems(
+  messages: readonly SessionMessage[],
+  generating: boolean,
+  getThinkingDuration?: (contentIndex: number) => number | undefined
+): FeedItem[] {
   const items: FeedItem[] = []
   const toolItems = new Map<string, Extract<FeedItem, { kind: 'tool' }>>()
   let n = 0
@@ -80,11 +102,33 @@ export function buildFeedItems(messages: readonly SessionMessage[], generating: 
       const text = extractText(msg.content)
       if (text) items.push({ kind: 'user', id: nextId(), text })
     } else if (msg.role === 'assistant') {
+      // оборванное сообщение: частичный reasoning в историю не пишется
+      // (требование «Оборванный reasoning не сохраняется и не дублируется»)
+      const skipThinking = msg.stopReason === 'error' || msg.stopReason === 'aborted'
       let text = ''
-      for (const part of msg.content) {
+      const flushText = (): void => {
+        if (text) {
+          items.push({ kind: 'assistant', id: nextId(), text, streaming: false })
+          text = ''
+        }
+      }
+      msg.content.forEach((part, contentIndex) => {
         if (part.type === 'text') {
           text += part.text
+        } else if (part.type === 'thinking') {
+          // redacted — скрыт safety-фильтрами, текст непригоден (design.md)
+          if (skipThinking || part.redacted || !part.thinking.trim()) return
+          flushText()
+          items.push({
+            kind: 'thinking',
+            id: nextId(),
+            text: part.thinking,
+            streaming: false,
+            startedAt: msg.timestamp,
+            durationMs: getThinkingDuration?.(contentIndex)
+          })
         } else if (part.type === 'toolCall') {
+          flushText()
           const item: Extract<FeedItem, { kind: 'tool' }> = {
             kind: 'tool',
             id: nextId(),
@@ -96,8 +140,8 @@ export function buildFeedItems(messages: readonly SessionMessage[], generating: 
           items.push(item)
           toolItems.set(part.id, item)
         }
-      }
-      if (text) items.push({ kind: 'assistant', id: nextId(), text, streaming: false })
+      })
+      flushText()
       if (msg.stopReason === 'error') {
         items.push({ kind: 'error', id: nextId(), message: msg.errorMessage || 'Ошибка провайдера' })
       }
@@ -139,6 +183,7 @@ export class ChatManager {
   private retired: ChatHandle[] = []
   private activeChatFile: string | null = null
   private runtimeKeys = new Set<string>()
+  private readonly durations = new ThinkingDurationsStore()
   /** Сериализация select/create/delete, чтобы не гонять создание сессий параллельно. */
   private queue: Promise<unknown> = Promise.resolve()
 
@@ -347,6 +392,8 @@ export class ChatManager {
           await this.createChatInternal()
         }
       }
+      // sidecar-длительности удалённого чата больше не нужны
+      this.durations.removeSession(file)
     })
   }
 
@@ -358,7 +405,9 @@ export class ChatManager {
       generating: handle.generating,
       lastSeq: handle.seq,
       retrying: handle.retrying,
-      items: buildFeedItems(handle.session.messages, handle.generating)
+      items: buildFeedItems(handle.session.messages, handle.generating, (contentIndex) =>
+        this.durations.get(handle.file, contentIndex)
+      )
     }
   }
 
@@ -416,9 +465,23 @@ export class ChatManager {
     await rt.refresh({ allowNetwork: false }).catch(() => {})
     await this.applyApiKeys(rt, settings)
     const model = this.resolveModel(rt, settings)
-    if (model) {
-      for (const handle of [...this.chats.values(), ...this.retired]) {
+    for (const handle of [...this.chats.values(), ...this.retired]) {
+      if (model) {
         await handle.session.setModel(model).catch(() => {})
+      }
+      // живое применение уровня thinking ко всем загруженным сессиям (5.2,
+      // LRN-20260728-003): SDK читает уровень на следующий запрос, стрим не рвётся
+      const providerId = handle.session.model?.provider
+      if (!providerId) continue
+      try {
+        handle.session.setThinkingLevel(
+          resolveThinkingLevel(
+            settings.thinkingLevels?.[providerId],
+            handle.session.getAvailableThinkingLevels()
+          )
+        )
+      } catch {
+        // модель без thinking — уровень неприменим, молчаливый режим по спеке
       }
     }
   }
@@ -481,14 +544,57 @@ export class ChatManager {
 
   async listProviders(): Promise<ProviderInfo[]> {
     const rt = await this.getModelRuntime()
-    const customIds = new Set(this.settingsStore.get().customProviders.map((c) => c.id))
-    return rt.getProviders().map((p) => ({
+    const settings = this.settingsStore.get()
+    const customIds = new Set(settings.customProviders.map((c) => c.id))
+    const infos: ProviderInfo[] = rt.getProviders().map((p) => ({
       id: p.id,
       name: p.name,
       hasAuth: rt.hasConfiguredAuth(p.id),
       isCustom: customIds.has(p.id),
-      models: rt.getModels(p.id).map((m) => ({ id: m.id, name: m.name }))
+      models: rt.getModels(p.id).map((m) => ({ id: m.id, name: m.name })),
+      availableThinkingLevels: []
     }))
+    await Promise.all(
+      infos.map(async (info) => {
+        // «текущая модель провайдера»: модель по умолчанию, если она этого
+        // провайдера, иначе первая модель провайдера
+        const modelId =
+          settings.defaultModel?.providerId === info.id
+            ? settings.defaultModel.modelId
+            : info.models[0]?.id
+        if (!modelId) return
+        info.availableThinkingLevels = await this.probeThinkingLevels(rt, info.id, modelId)
+      })
+    )
+    return infos
+  }
+
+  /** Уровни thinking по публичному API SDK: probe-сессия в scratch-каталоге
+   * (пустая сессия не пишется на диск до первого сообщения). Ошибки (нет
+   * авторизации и т.п.) деградируют в пустой список — в UI останется off. */
+  private async probeThinkingLevels(
+    rt: ModelRuntime,
+    providerId: string,
+    modelId: string
+  ): Promise<ThinkingLevelSetting[]> {
+    const model = rt.getModel(providerId, modelId)
+    if (!model) return []
+    try {
+      const dir = join(dataPaths.userData, 'thinking-probe')
+      mkdirSync(dir, { recursive: true })
+      const { session } = await createAgentSession({
+        cwd: dir,
+        agentDir: dataPaths.agentDir,
+        modelRuntime: rt,
+        sessionManager: SessionManager.create(dir),
+        model: model as AnyModel
+      })
+      const levels = session.getAvailableThinkingLevels() as ThinkingLevelSetting[]
+      session.dispose()
+      return levels
+    } catch {
+      return []
+    }
   }
 
   // ---------------------------------------------------------------- private
@@ -541,9 +647,24 @@ export class ChatManager {
       seq: 0,
       retrying: null,
       lastPromptText,
-      errorSentForRun: false
+      errorSentForRun: false,
+      openThinking: null
     }
     session.subscribe((event) => this.onSessionEvent(handle, event))
+    // per-provider уровень thinking: сохранённый или включённый дефолт (5.1)
+    const providerId = session.model?.provider
+    if (providerId) {
+      try {
+        session.setThinkingLevel(
+          resolveThinkingLevel(
+            this.settingsStore.get().thinkingLevels?.[providerId],
+            session.getAvailableThinkingLevels()
+          )
+        )
+      } catch {
+        // модель без thinking или уровень неприменим — молчаливый режим по спеке
+      }
+    }
     return handle
   }
 
@@ -558,12 +679,30 @@ export class ChatManager {
         handle.generating = true
         handle.errorSentForRun = false
         handle.retrying = null
+        handle.openThinking = null
         this.emit(handle, { type: 'agent_start' })
         break
       case 'message_update': {
         const ev = event.assistantMessageEvent
         if (ev.type === 'text_delta') {
           this.emit(handle, { type: 'text_delta', delta: ev.delta })
+        } else if (ev.type === 'thinking_start') {
+          // повторный start при незакрытой порции (обрыв + auto-retry): renderer
+          // заменит незакрытый блок, а не добавит новый (LRN-20260728-002)
+          handle.openThinking = { contentIndex: ev.contentIndex, startedAt: Date.now() }
+          this.emit(handle, {
+            type: 'thinking_start',
+            contentIndex: ev.contentIndex,
+            startedAt: handle.openThinking.startedAt
+          })
+        } else if (ev.type === 'thinking_delta') {
+          this.emit(handle, { type: 'thinking_delta', contentIndex: ev.contentIndex, delta: ev.delta })
+        } else if (ev.type === 'thinking_end') {
+          const open = handle.openThinking
+          handle.openThinking = null
+          const durationMs = open && open.contentIndex === ev.contentIndex ? Date.now() - open.startedAt : 0
+          this.durations.record(handle.file, ev.contentIndex, durationMs)
+          this.emit(handle, { type: 'thinking_end', contentIndex: ev.contentIndex, durationMs })
         }
         break
       }
@@ -623,6 +762,9 @@ export class ChatManager {
         break
       case 'agent_end': {
         handle.retrying = null
+        // незакрытая порция reasoning (обрыв): renderer закроет streaming-блок
+        // по agent_end/error; при willRetry новый thinking_start заменит его
+        handle.openThinking = null
         if (event.willRetry) break // авто-ретрай продолжит генерацию
         handle.generating = false
         const lastAssistant = [...event.messages].reverse().find((m) => m.role === 'assistant')

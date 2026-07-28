@@ -59,6 +59,14 @@ export type FeedItem =
       argsPreview: string
       resultPreview?: string
     }
+  | {
+      kind: 'thinking'
+      id: string
+      text: string
+      streaming: boolean
+      startedAt: number
+      durationMs?: number
+    }
   | { kind: 'error'; id: string; message: string }
 
 export interface RetryState {
@@ -80,6 +88,27 @@ export interface ChatSnapshot {
 export type ChatEvent =
   | { type: 'agent_start'; file: string; seq: number }
   | { type: 'text_delta'; file: string; seq: number; delta: string }
+  | {
+      type: 'thinking_start'
+      file: string
+      seq: number
+      contentIndex: number
+      startedAt: number
+    }
+  | {
+      type: 'thinking_delta'
+      file: string
+      seq: number
+      contentIndex: number
+      delta: string
+    }
+  | {
+      type: 'thinking_end'
+      file: string
+      seq: number
+      contentIndex: number
+      durationMs: number
+    }
   | {
       type: 'message_end'
       file: string
@@ -121,6 +150,16 @@ export interface ProviderSettings {
   baseUrl?: string
 }
 
+/** Уровни thinking pi SDK (pi-agent-core ThinkingLevel, включая 'off'). */
+export type ThinkingLevelSetting =
+  | 'off'
+  | 'minimal'
+  | 'low'
+  | 'medium'
+  | 'high'
+  | 'xhigh'
+  | 'max'
+
 export interface CustomProviderModel {
   id: string
   name?: string
@@ -138,6 +177,8 @@ export interface AppSettings {
   providers: Record<string, ProviderSettings>
   customProviders: CustomProviderSettings[]
   defaultModel?: { providerId: string; modelId: string }
+  /** Уровень thinking per provider; отсутствие записи = дефолт (включённый уровень). */
+  thinkingLevels?: Record<string, ThinkingLevelSetting>
 }
 
 export interface ProviderModelInfo {
@@ -151,6 +192,8 @@ export interface ProviderInfo {
   hasAuth: boolean
   isCustom: boolean
   models: ProviderModelInfo[]
+  /** Уровни thinking текущей модели провайдера по SDK (может включать 'off'). */
+  availableThinkingLevels: ThinkingLevelSetting[]
 }
 
 export interface SettingsView {

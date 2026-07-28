@@ -14,49 +14,49 @@
 
 ## 2. IPC-контракт (shared + preload)
 
-- [ ] 2.1 В `src/shared/ipc.ts` добавить в `ChatEvent` события `thinking_start`,
+- [x] 2.1 В `src/shared/ipc.ts` добавить в `ChatEvent` события `thinking_start`,
   `thinking_delta { delta }`, `thinking_end` (с `file`/`seq`, как у остальных)
-- [ ] 2.2 В `src/shared/ipc.ts` добавить в `FeedItem` kind `'thinking'`
+- [x] 2.2 В `src/shared/ipc.ts` добавить в `FeedItem` kind `'thinking'`
   (поля: `id`, `text`, `streaming`, `startedAt`, `durationMs?`)
-- [ ] 2.3 В `AppSettings` добавить `thinkingLevels?: Record<string, ThinkingLevel | 'off'>`
+- [x] 2.3 В `AppSettings` добавить `thinkingLevels?: Record<string, ThinkingLevel | 'off'>`
   (тип уровня — union литералов SDK: 'off' | 'minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max')
-- [ ] 2.4 Убедиться, что типы доезжают через preload (`src/preload/index.ts`)
+- [x] 2.4 Убедиться, что типы доезжают через preload (`src/preload/index.ts`)
   без изменений рантайма (события `event:chat` пробрасываются как раньше)
 
 ## 3. Main: проброс и дедупликация thinking-событий
 
-- [ ] 3.1 В `chat-manager.ts` (`onSessionEvent`, `case 'message_update'`)
+- [x] 3.1 В `chat-manager.ts` (`onSessionEvent`, `case 'message_update'`)
   форвардить `thinking_start/delta/end` в новые ChatEvent; вести состояние
   незакрытой порции на handle
-- [ ] 3.2 Дедупликация (LRN-20260728-002): повторный `thinking_start` при
+- [x] 3.2 Дедупликация (LRN-20260728-002): повторный `thinking_start` при
   незакрытой предыдущей порции (обрыв + auto-retry) помечает её заменяемой —
   renderer заменяет блок, а не добавляет; склейка по `contentIndex` при
   повторном start того же индекса
-- [ ] 3.3 Гарантировать, что `agent_end` (включая `willRetry`) и `error`
+- [x] 3.3 Гарантировать, что `agent_end` (включая `willRetry`) и `error`
   закрывают незакрытую thinking-порцию (emit `thinking_end`-эквивалента или
   флага в существующих событиях), чтобы streaming-блок не «зависал»
 
 ## 4. Main: персистентность reasoning и длительности
 
-- [ ] 4.1 В `buildFeedItems()` собирать блоки `'thinking'` из
+- [x] 4.1 В `buildFeedItems()` собирать блоки `'thinking'` из
   `part.type === 'thinking'` assistant-сообщений в хронологической позиции
   (порядок массива content), пропуская пустые/redacted и части сообщений со
   stopReason `error`/`aborted`
-- [ ] 4.2 Sidecar-хранилище длительностей: JSON в каталоге данных приложения,
+- [x] 4.2 Sidecar-хранилище длительностей: JSON в каталоге данных приложения,
   ключ (sessionFile, contentIndex) → durationMs, запись атомарная (tmp+rename)
   на `thinking_end`; чтение в `buildFeedItems()`; отсутствие записи = блок без
   длительности (не ошибка)
-- [ ] 4.3 Чистка sidecar-записей при удалении чата
+- [x] 4.3 Чистка sidecar-записей при удалении чата
 
 ## 5. Main: per-provider уровень thinking
 
-- [ ] 5.1 При создании сессии передавать `thinkingLevel` из
+- [x] 5.1 При создании сессии передавать `thinkingLevel` из
   `settings.thinkingLevels[providerId]`; при отсутствии — дефолт: первый
   доступный из low/medium, иначе первый из `getAvailableThinkingLevels()`
-- [ ] 5.2 В `applySettings()` вызывать `session.setThinkingLevel()` для каждого
+- [x] 5.2 В `applySettings()` вызывать `session.setThinkingLevel()` для каждого
   загруженного handle (включая retired) — живое применение без перезапуска
   (LRN-20260728-003); уровень off применяется так же
-- [ ] 5.3 Протянуть доступные уровни в `SettingsView` (например,
+- [x] 5.3 Протянуть доступные уровни в `SettingsView` (например,
   `availableThinkingLevels` per provider для текущей модели) для рендера
   списка в Settings
 
