@@ -1,4 +1,4 @@
-Status: approved
+Status: done
 Review: APPROVE 2026-07-28
 
 # Proposal: chat-reasoning-stream
