@@ -50,13 +50,13 @@
 
 ## 6. Vitest unit-тесты
 
-- [ ] 6.1 Тест IPC-типов: `src/shared/ipc.ts` — типы компилируются, контракты каналов валидны (хотя бы structural test)
-- [ ] 6.2 Тест JSON-хранилища: `src/main/json-file.ts` — атомарное чтение/запись, tmp+rename, отсутствующий файл → дефолт
-- [ ] 6.3 Тест RecentProjects: `src/main/recent-projects.ts` — добавление, сортировка, удаление, персистентность
-- [ ] 6.4 Тест SettingsStore: `src/main/settings-store.ts` — чтение/запись настроек, дефолты, миграция
-- [ ] 6.5 Тест IPC-обёртки: `src/preload/index.ts` — при моканом `ipcRenderer` вызовы `window.api.*` пробрасывают правильные каналы
-- [ ] 6.6 Тест React-компонента: хотя бы один компонент с `@testing-library/react` (рендерится, реагирует на клик)
-- [ ] 6.7 Убедиться, что `pnpm test:unit` проходит все Vitest-тесты
+- [x] 6.1 Тест IPC-типов: `src/shared/ipc.ts` — типы компилируются, контракты каналов валидны (хотя бы structural test)
+- [x] 6.2 Тест JSON-хранилища: `src/main/json-file.ts` — атомарное чтение/запись, tmp+rename, отсутствующий файл → дефолт
+- [x] 6.3 Тест RecentProjects: `src/main/recent-projects.ts` — добавление, сортировка, удаление, персистентность
+- [x] 6.4 Тест SettingsStore: `src/main/settings-store.ts` — чтение/запись настроек, дефолты, миграция
+- [x] 6.5 Тест IPC-обёртки: `src/preload/index.ts` — при моканом `ipcRenderer` вызовы `window.api.*` пробрасывают правильные каналы
+- [x] 6.6 Тест React-компонента: хотя бы один компонент с `@testing-library/react` (рендерится, реагирует на клик)
+- [x] 6.7 Убедиться, что `pnpm test:unit` проходит все Vitest-тесты
 
 ## 7. Playwright MCP и агент-driven верификация
 
