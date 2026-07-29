@@ -111,9 +111,9 @@
 
 ## 11. Очистка
 
-- [ ] 11.1 Удалить `src/main/spike.ts` (4 экспортируемые функции, ~450 строк)
-- [ ] 11.2 Удалить из `src/main/index.ts`: импорты `runSpike`, `runThinkingSpike`, `runChatManagerSpike`, `runFeedDumpSpike`; условное ветвление по `SPIKE_HEADLESS` (строки `isSpike`, `no-sandbox`/`disable-gpu`/`ozone-platform=headless`, вызовы спайк-функций)
-- [ ] 11.3 Удалить из `src/main/index.ts` env-переменные и флаги, специфичные для SPIKE_HEADLESS: `--no-sandbox`, `--disable-gpu`, `--ozone-platform=headless` при `isSpike`
+- [x] 11.1 Удалить `src/main/spike.ts` (4 экспортируемые функции, ~450 строк)
+- [x] 11.2 Удалить из `src/main/index.ts`: импорты `runSpike`, `runThinkingSpike`, `runChatManagerSpike`, `runFeedDumpSpike`; условное ветвление по `SPIKE_HEADLESS` (строки `isSpike`, `no-sandbox`/`disable-gpu`/`ozone-platform=headless`, вызовы спайк-функций)
+- [x] 11.3 Удалить из `src/main/index.ts` env-переменные и флаги, специфичные для SPIKE_HEADLESS: `--no-sandbox`, `--disable-gpu`, `--ozone-platform=headless` при `isSpike`
 
 ## 12. Проверка
 

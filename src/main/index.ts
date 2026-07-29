@@ -6,16 +6,7 @@ import { ChatManager } from './pi/chat-manager'
 import { RecentProjectsStore } from './recent-projects'
 import { SettingsStore } from './settings-store'
 import { registerIpc } from './ipc'
-import { runChatManagerSpike, runFeedDumpSpike, runSpike, runThinkingSpike } from './spike'
 import { IpcChannels, type ChatEvent, type CurrentProject } from '../shared/ipc'
-
-const isSpike = Boolean(process.env.SPIKE_HEADLESS)
-
-if (isSpike) {
-  app.commandLine.appendSwitch('no-sandbox')
-  app.commandLine.appendSwitch('disable-gpu')
-  app.commandLine.appendSwitch('ozone-platform', 'headless')
-}
 
 let mainWindow: BrowserWindow | null = null
 
@@ -75,21 +66,6 @@ app.whenReady().then(async () => {
       }
     }
   })
-
-  if (isSpike) {
-    const mode = process.env.SPIKE_HEADLESS
-    const spike =
-      mode === 'thinking'
-        ? runThinkingSpike()
-        : mode === 'chatmanager'
-          ? runChatManagerSpike()
-          : mode === 'feedump'
-            ? runFeedDumpSpike()
-            : runSpike()
-    const code = await spike
-    app.exit(code)
-    return
-  }
 
   createWindow()
 
