@@ -18,7 +18,7 @@
 - `pnpm test` — все слои: unit + e2e + visual
 - `pnpm test:unit` — Vitest (node + web/jsdom проекты)
 - `pnpm test:e2e` — Playwright E2E на свежей production-сборке
-- `pnpm test:e2e:quick` — Playwright E2E на dev-сборке без пересборки
+- `pnpm test:e2e:quick` — Playwright E2E на dev-сборке (main/preload собраны, renderer — dev-server)
 - `pnpm test:visual` — visual regression против baseline
 - `pnpm test:agent:electron` — приложение с CDP :9222 для агентской проверки
 - `pnpm test:agent:dev` — инструкция быстрого режима (dev-server + MCP)
@@ -101,11 +101,14 @@ approve. Два режима агентской верификации (Playwrig
 в opencode.json, ручной запуск не нужен):
 
 - **Быстрый (implementer, итерации):** `pnpm test:agent:dev` выводит
-  инструкцию — `pnpm dev:renderer`, затем `browser_navigate
-  http://localhost:5173` через MCP. Renderer-only: main/IPC не проверяется.
+  инструкцию — `pnpm dev:renderer`, затем инструменты MCP-сервера
+  `playwright` (browser_navigate http://localhost:5173). Renderer-only:
+  main/IPC не проверяется.
 - **Полный (ui-reviewer, финальная):** `pnpm test:agent:electron` (живой
-  Electron с CDP :9222) + MCP с `--cdp-endpoint http://127.0.0.1:9222`.
-  Реальная main-renderer интеграция.
+  Electron с CDP :9222, изолированный userData с сид-данными — реальные
+  проекты и API-ключи агенту недоступны) + инструменты MCP-сервера
+  `playwright-cdp` (уже настроен с --cdp-endpoint :9222). Реальная
+  main-renderer интеграция.
 
 Контракт implementer'а: в отчёте оркестратору implementer обязан указать
 строку `Change touches: renderer` (или `main`, `both`) по анализу своего

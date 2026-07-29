@@ -23,12 +23,16 @@ permission:
 
 1. Прочитай задачу от оркестратора: какой user flow и какие состояния проверять.
 2. Убедись, что собран билд (`pnpm build` при необходимости), затем запусти
-   приложение: `pnpm test:agent:electron` (Electron с CDP на 9222). Если порт
+   приложение: `pnpm test:agent:electron` — Electron с CDP на 9222, ИЗОЛИРОВАННЫЙ
+   от реальных данных пользователя (отдельный userData с сид-данными: проект
+   «kotik-ui-review-project» в недавних, один чат с историей). Если порт
    занят — скрипт скажет об этом: заверши старый процесс и повтори.
-3. Подключись через Playwright MCP с `--cdp-endpoint http://127.0.0.1:9222`.
+3. Используй инструменты MCP-сервера `playwright-cdp` (префикс
+   `playwright-cdp_*`) — он уже настроен в opencode.json с
+   `--cdp-endpoint http://127.0.0.1:9222`, переконфигурация не нужна.
 4. Выполни указанный пользовательский сценарий инструментами MCP:
-   `browser_navigate`, `browser_snapshot` (accessibility-дерево),
-   `browser_click`, `browser_fill`, `browser_take_screenshot`.
+   `browser_snapshot` (accessibility-дерево), `browser_click`,
+   `browser_fill`, `browser_take_screenshot`.
 5. Проверь состояния: normal, empty, loading, error — все, что релевантны
    сценарию. Проверяй не только начальный экран.
 6. Захвати скриншот каждого затронутого состояния.
@@ -41,7 +45,8 @@ permission:
 ## Быстрый режим (только если оркестратор явно просил его)
 
 `pnpm test:agent:dev` выводит инструкцию: `pnpm dev:renderer`, затем
-`browser_navigate http://localhost:5173`. Этот режим НЕ проверяет main/IPC —
+инструменты MCP-сервера `playwright` (префикс `playwright_*`,
+browser_navigate на http://localhost:5173). Этот режим НЕ проверяет main/IPC —
 для финальной верификации он недопустим.
 
 ## Формат ответа

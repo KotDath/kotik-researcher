@@ -110,18 +110,14 @@ await expect(page).toHaveScreenshot('main-window.png', {
 
 ### Инструменты (tools)
 
-- `browser_navigate(url)` — переход по URL
-- `browser_snapshot` — accessibility-дерево страницы (текстовое представление, экономит токены)
-- `browser_click(selector)` — клик по элементу
-- `browser_fill(selector, text)` — ввод текста
-- `browser_screenshot` — скриншот страницы
-- `browser_evaluate(js)` — выполнение JavaScript на странице
-- `browser_find(text)` — поиск текста на странице
-- `browser_network` — информация о сетевых запросах
+Актуальные имена (проверено живьём на @playwright/mcp 0.0.78):
+`browser_navigate`, `browser_snapshot` (accessibility-дерево), `browser_click`,
+`browser_fill`, `browser_take_screenshot` (НЕ `browser_screenshot` — переименован),
+`browser_evaluate`, `browser_find`, `browser_network_requests`, `browser_resize`.
 
 Ключевая особенность: `browser_snapshot` использует accessibility-дерево, а не CSS-селекторы — агент «видит» структуру страницы в текстовом виде. Это надёжнее для неструктурированной верификации, чем скриншоты.
 
-### Регистрация в opencode.json
+### Регистрация в opencode.json — ДВА сервера (review-fix, блокер 1)
 
 ```json
 {
@@ -129,14 +125,27 @@ await expect(page).toHaveScreenshot('main-window.png', {
     "playwright": {
       "type": "local",
       "command": ["npx", "-y", "@playwright/mcp@latest"]
+    },
+    "playwright-cdp": {
+      "type": "local",
+      "command": ["npx", "-y", "@playwright/mcp@latest", "--cdp-endpoint", "http://127.0.0.1:9222"]
     }
   }
 }
 ```
 
-Для полного режима с CDP агент выполняет две операции последовательно:
-1. `pnpm test:agent:electron` (запускает Electron с `--remote-debugging-port=9222`)
-2. Закрывает автономный MCP и переподключается с `--cdp-endpoint` (или использует `browser_navigate` к CDP)
+Один MCP-процесс не умеет переключаться между автономным браузером и CDP —
+поэтому два именованных сервера; агент выбирает по префиксу инструментов
+(`playwright_*` — быстрый режим, `playwright-cdp_*` — полный). Ручная
+переконфигурация не требуется. Проверено живьём: `opencode mcp list` показывает
+оба connected, реальные вызовы `playwright_browser_snapshot` (dev-server) и
+`playwright-cdp_browser_snapshot` (живой Electron) возвращают accessibility-дерево.
+
+Полный режим подразумевает `pnpm test:agent:electron`: Electron с CDP :9222,
+ИЗОЛИРОВАННЫЙ от реальных данных (`--e2e` + `E2E_USER_DATA_DIR`, env-allowlist
+без credentials) с сид-данными (recent-projects.json + проект + чат с историей) —
+агенту есть что проверять, а реальные проекты/API-ключи недоступны (review-fix,
+блокер 2).
 
 **Важно:** `@playwright/mcp` не имеет инструментов для Electron main-процесса — только renderer. Проверка IPC/main-интеграции — через Playwright E2E-тесты, не через MCP.
 
@@ -192,17 +201,21 @@ export default defineConfig({
 
 ### 4. Два режима E2E-тестов: build и dev
 
-- `pnpm test:e2e` → `pnpm build && playwright test --project=e2e` — для reviewer'а: полный production-цикл
-- `pnpm test:e2e:quick` → `playwright test --project=e2e` (на dev-сборке electron-vite) — для implementer'а в итерациях, без пересборки
+- `pnpm test:e2e` → `pnpm build && playwright test --project=e2e` — для reviewer'а: полный production-цикл (renderer из бандла `out/renderer`)
+- `pnpm test:e2e:quick` → `electron-vite build && E2E_RENDERER_URL=http://localhost:5173 playwright test --project=e2e` — для implementer'а: main+preload свежесобранные (быстрая сборка ~1с), renderer — живой dev-server с HMR
 
-Оба используют `_electron.launch()`, разница только в том, собран ли `out/` заново. Отвергнуто: только build-режим — замедляет итерации implementer'а.
+Оба используют `_electron.launch()`. Quick НЕ бежит на stale main/preload
+(review-fix, блокер 3): ранняя версия брала main из старого `out/`, и изменения
+main/preload не попадали в прогон. «Без пересборки» в исходной формулировке
+теперь означает «без пересборки renderer'а». Отвергнуто: только build-режим —
+замедляет итерации implementer'а.
 
 ### 5. Агент-driven: два режима с явным разделением
 
-- **Быстрый (dev-server):** `pnpm dev:renderer` → renderer на localhost → MCP подключается к странице. Быстро, не требует сборки main, но не проверяет IPC/preload/main-интеграцию.
-- **Полный (live Electron):** `pnpm test:agent:electron` → Electron с `--remote-debugging-port=9222` → MCP с `--cdp-endpoint`. Финальная верификация с реальной main-renderer интеграцией.
+- **Быстрый (dev-server):** `pnpm dev:renderer` → renderer на localhost → инструменты MCP-сервера `playwright`. Быстро, не требует сборки main, но не проверяет IPC/preload/main-интеграцию.
+- **Полный (live Electron):** `pnpm test:agent:electron` → изолированный Electron (отдельный userData с сид-данными, env без credentials) с `--remote-debugging-port=9222` → инструменты MCP-сервера `playwright-cdp`. Финальная верификация с реальной main-renderer интеграцией.
 
-Разделение зафиксировано в AGENTS.md: implementer использует быстрый режим для самопроверки, ui-reviewer — полный для финальной. Отвергнуто: унификация в один режим — быстрый не ловит баги IPC/main (LRN-20260729-001: баги верифицируются на том же уровне, где наблюдаются симптомы).
+Механика переключения — два именованных MCP-сервера в opencode.json (см. справку выше), ручной переконфигурации нет. Разделение зафиксировано в AGENTS.md: implementer использует быстрый режим для самопроверки, ui-reviewer — полный для финальной. Отвергнуто: унификация в один режим — быстрый не ловит баги IPC/main (LRN-20260729-001: баги верифицируются на том же уровне, где наблюдаются симптомы).
 
 ### 6. Стратегия test-id: `data-testid`
 
@@ -232,6 +245,26 @@ await electronApp.evaluate(({ dialog }) => {
 - `await window.evaluate(async () => { await document.fonts.ready })` — ожидание загрузки шрифтов
 - `window.addStyleTag({ content: '*, *::before, *::after { animation-duration: 0s !important; animation-delay: 0s !important; transition-duration: 0s !important; caret-color: transparent !important; }' })` — отключение анимаций
 - Фиксированный размер окна: `await window.setViewportSize({ width: 1280, height: 800 })`
+- **env allowlist** (review-fix, major 9): Electron получает только явно
+  перечисленные переменные (PATH/HOME/DISPLAY/…), credentials (`*_API_KEY`,
+  `*_TOKEN`, `*_SECRET`, AWS) не достигают pi SDK — реальные сетевые вызовы
+  LLM из тестов исключены, исход отправки сообщения детерминирован (карточка
+  ошибки). Отвергнут denylist `*_API_KEY`: пропускал бы остальные креды.
+- **teardown в try/finally** (review-fix, minor 10): изолированный userData
+  удаляется и при падении теста.
+
+### 9a. Мок window.api в preload по `E2E_MOCK_API` (review-fix, блокер 4)
+
+Детерминированные состояния (вечная загрузка, точный текст ошибки, богатая
+история) в реальном main недостижимы. contextBridge экспонирует read-only
+`window.api` — подмена снаружи невозможна (проверено: «Cannot assign to read
+only property»). Поэтому мок живёт в `src/preload/mock-api.ts` и активируется
+env `E2E_MOCK_API=loading|demo|error` в `src/preload/index.ts` — подмена
+происходит ДО рендера, внутри Electron. Visual-тесты мок-состояний снова
+используют `_electron.launch()` и общий fixture; обход через обычный Chromium
+(цикл 0) удалён. Тот же мок renderer ставит себе сам в renderer-only режиме
+(`pnpm dev:renderer`, `src/renderer/src/mock-api.ts`) — быстрый агентский
+режим и visual-тесты видят идентичные состояния.
 
 ### 10. ui-reviewer: deny:edit, PASS/FAIL
 
