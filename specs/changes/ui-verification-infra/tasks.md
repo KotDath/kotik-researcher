@@ -74,7 +74,7 @@
 
 ## 9. Документация
 
-- [ ] 9.1 Создать `docs/ui-review.md` — критерии FAIL:
+- [x] 9.1 Создать `docs/ui-review.md` — критерии FAIL:
   - text is clipped or overlaps another element
   - important control is outside visible area
   - unexpected horizontal scrolling
@@ -85,7 +85,7 @@
   - keyboard focus is hidden
   - interaction produces a different state from specification
   - для каждого нарушения: severity (critical/major/minor), affected screen, visible evidence, expected behavior, suggested correction
-- [ ] 9.2 Добавить в `AGENTS.md` секцию «UI verification»:
+- [x] 9.2 Добавить в `AGENTS.md` секцию «UI verification»:
   - После изменения renderer UI:
     1. Implementer: `pnpm test:unit && pnpm test:e2e:quick`, затем `pnpm test:agent:dev` + MCP для быстрой визуальной проверки
     2. Reviewer: запросить ui-reviewer (через оркестратора) для полной верификации
@@ -98,16 +98,16 @@
     9. Никогда не обновлять visual baseline только ради прохождения теста
     10. FAIL ui-reviewer = hard gate для approve
     11. Generator/evaluator цикл: максимум 3 итерации; после 3-го FAIL — эскалация к человеку
-- [ ] 9.3 Добавить в `AGENTS.md` ужесточение протокола идеатора:
+- [x] 9.3 Добавить в `AGENTS.md` ужесточение протокола идеатора:
   - vision.md обязан покрывать все измерения карты: Цель и границы, Техническая реализация, UI/UX, Риски и опасения, Компромиссы, Крайние случаи и failure modes, Критерии приёмки, Открытые вопросы
   - Оркестратор проверяет наличие всех секций перед передачей spec-writer'у; при неполной карте — возврат идеатору
-- [ ] 9.4 Добавить в `AGENTS.md` контракт implementer'а: в ответе оркестратору implementer обязан указать `Change touches: renderer` (или `main`, `both`) по результатам анализа своего диффа
+- [x] 9.4 Добавить в `AGENTS.md` контракт implementer'а: в ответе оркестратору implementer обязан указать `Change touches: renderer` (или `main`, `both`) по результатам анализа своего диффа
 
 ## 10. Интеграция в SDD-цикл (процесс, не код)
 
-- [ ] 10.1 В инструкции implementer'а (`.opencode/agents/implementer.md`) добавить: после реализации проанализировать дифф и включить в ответ строку `Change touches: renderer` / `main` / `both`; выполнить `pnpm test:unit && pnpm test:e2e:quick`; при `renderer`/`both` — быстрый UI-чек (dev-server + MCP)
-- [ ] 10.2 В инструкции reviewer'а (`.opencode/agents/reviewer.md`) добавить: при `Change touches: renderer` или `both` от implementer'а — сообщить оркестратору о необходимости UI-проверки (вызов ui-reviewer)
-- [ ] 10.3 В инструкции оркестратора (`.opencode/agents/orchestrator.md`) добавить: при `Change touches: renderer`/`both` от implementer'а — после кодового ревью вызвать ui-reviewer для полной верификации; FAIL от ui-reviewer — блокировать approve; после 3-го FAIL — эскалация к человеку
+- [x] 10.1 В инструкции implementer'а (`.opencode/agents/implementer.md`) добавить: после реализации проанализировать дифф и включить в ответ строку `Change touches: renderer` / `main` / `both`; выполнить `pnpm test:unit && pnpm test:e2e:quick`; при `renderer`/`both` — быстрый UI-чек (dev-server + MCP)
+- [x] 10.2 В инструкции reviewer'а (`.opencode/agents/reviewer.md`) добавить: при `Change touches: renderer` или `both` от implementer'а — сообщить оркестратору о необходимости UI-проверки (вызов ui-reviewer)
+- [x] 10.3 В инструкции оркестратора (`.opencode/agents/orchestrator.md`) добавить: при `Change touches: renderer`/`both` от implementer'а — после кодового ревью вызвать ui-reviewer для полной верификации; FAIL от ui-reviewer — блокировать approve; после 3-го FAIL — эскалация к человеку
 
 ## 11. Очистка
 
