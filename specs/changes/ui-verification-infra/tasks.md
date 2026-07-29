@@ -60,11 +60,11 @@
 
 ## 7. Playwright MCP и агент-driven верификация
 
-- [ ] 7.1 Добавить в `opencode.json` секцию `mcp.servers.playwright` (type: local, command: npx -y @playwright/mcp@latest)
-- [ ] 7.2 Создать npm-скрипт `test:agent:electron` — запуск `electron` с `--remote-debugging-port=9222` и путём к `./out/main/index.mjs` (требует предварительной сборки; при отсутствии — понятная ошибка)
-- [ ] 7.3 Создать npm-скрипт `test:agent:dev` — выводит инструкцию для агента: запустить `pnpm dev:renderer`, затем через MCP `browser_navigate http://localhost:5173`
-- [ ] 7.4 Проверить, что MCP-сервер запускается и инструменты доступны: выполнить ручной прогон `browser_snapshot` на dev-server
-- [ ] 7.5 Проверить полный CDP-режим: `pnpm test:agent:electron` + подключение MCP с `--cdp-endpoint` — агент получает accessibility-дерево живого Electron
+- [x] 7.1 Добавить в `opencode.json` секцию `mcp.servers.playwright` (type: local, command: npx -y @playwright/mcp@latest)
+- [x] 7.2 Создать npm-скрипт `test:agent:electron` — запуск `electron` с `--remote-debugging-port=9222` и путём к `./out/main/index.mjs` (требует предварительной сборки; при отсутствии — понятная ошибка)
+- [x] 7.3 Создать npm-скрипт `test:agent:dev` — выводит инструкцию для агента: запустить `pnpm dev:renderer`, затем через MCP `browser_navigate http://localhost:5173`
+- [x] 7.4 Проверить, что MCP-сервер запускается и инструменты доступны: выполнить ручной прогон `browser_snapshot` на dev-server
+- [x] 7.5 Проверить полный CDP-режим: `pnpm test:agent:electron` + подключение MCP с `--cdp-endpoint` — агент получает accessibility-дерево живого Electron
 
 ## 8. ui-reviewer субагент
 

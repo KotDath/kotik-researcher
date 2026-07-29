@@ -1,0 +1,16 @@
+- generic [ref=e4]:
+  - complementary [ref=e5]:
+    - generic "/home/user/research/demo-project" [ref=e6]:
+      - generic [ref=e7]: demo-project
+      - generic [ref=e8]:
+        - button "⇄" [ref=e9] [cursor=pointer]
+        - button "⚙" [ref=e10] [cursor=pointer]
+    - button "+ Новый чат" [ref=e11] [cursor=pointer]
+    - textbox "Поиск чатов…" [ref=e12]
+    - list [ref=e13]:
+      - listitem [ref=e14]: Чатов нет
+  - main [ref=e15]:
+    - generic [ref=e16]: Напишите сообщение, чтобы начать диалог
+    - generic [ref=e18]:
+      - textbox "Сообщение агенту… (Enter — отправить, Shift+Enter — новая строка)" [ref=e19]
+      - button "Отправить" [disabled] [ref=e21]
