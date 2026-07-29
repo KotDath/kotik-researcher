@@ -10,30 +10,30 @@
 
 ## 2. Vitest workspace и конфигурация
 
-- [ ] 2.1 Создать `vitest.workspace.ts` в корне: два проекта — node (`tsconfig.node.json`, environment `'node'`) и web (`tsconfig.web.json`, environment `'jsdom'`)
-- [ ] 2.2 Убедиться, что web-проект корректно резолвит алиас `@renderer` через `resolve.alias`
-- [ ] 2.3 Настроить `include` паттерны: `tests/unit/**/*.test.ts` для node-проекта, `tests/unit/**/*.test.tsx` для web-проекта
+- [x] 2.1 Создать `vitest.workspace.ts` в корне: два проекта — node (`tsconfig.node.json`, environment `'node'`) и web (`tsconfig.web.json`, environment `'jsdom'`)
+- [x] 2.2 Убедиться, что web-проект корректно резолвит алиас `@renderer` через `resolve.alias`
+- [x] 2.3 Настроить `include` паттерны: `tests/unit/**/*.test.ts` для node-проекта, `tests/unit/**/*.test.tsx` для web-проекта
 
 ## 3. Playwright конфигурация и fixture
 
-- [ ] 3.1 Создать `playwright.config.ts` в корне: `testDir: './tests'`, два проекта — `e2e` (testDir `./tests/e2e`) и `visual` (testDir `./tests/visual`)
-- [ ] 3.2 Создать `tests/e2e/fixtures/electron.fixture.ts` — общий fixture:
+- [x] 3.1 Создать `playwright.config.ts` в корне: `testDir: './tests'`, два проекта — `e2e` (testDir `./tests/e2e`) и `visual` (testDir `./tests/visual`)
+- [x] 3.2 Создать `tests/e2e/fixtures/electron.fixture.ts` — общий fixture:
   - `electronApp`: `_electron.launch()` с `args: ['./out/main/index.mjs']` (для build-режима) и `env: { NODE_ENV: 'test' }`; close в teardown
   - `appWindow`: `electronApp.firstWindow()`, `waitForLoadState('domcontentloaded')`, `document.fonts.ready`, отключение анимаций/transition, `setViewportSize(1280, 800)`
-- [ ] 3.3 В fixture предусмотреть флаг `--e2e`, передаваемый в `args`, чтобы приложение могло пропустить начальные диалоги в тестовом режиме (если нужно)
-- [ ] 3.4 Убедиться, что `_electron.launch()` находит electron через pnpm-симлинки (`node_modules/.bin/electron`) без явного `executablePath`
+- [x] 3.3 В fixture предусмотреть флаг `--e2e`, передаваемый в `args`, чтобы приложение могло пропустить начальные диалоги в тестовом режиме (если нужно)
+- [x] 3.4 Убедиться, что `_electron.launch()` находит electron через pnpm-симлинки (`node_modules/.bin/electron`) без явного `executablePath`
 
 ## 4. Playwright E2E smoke-тесты (5–10 сценариев)
 
-- [ ] 4.1 Smoke: приложение запускается и показывает главное окно — `toHaveTitle`, видимость `data-testid="main-layout"`
-- [ ] 4.2 Smoke: создание нового проекта — замокать `dialog.showOpenDialog`, клик «Новый проект», проверка появления проекта в UI
-- [ ] 4.3 Smoke: открытие существующего проекта — замокать `dialog.showOpenDialog`, клик «Открыть проект», проверка перехода
-- [ ] 4.4 Smoke: навигация по чатам — открыть проект с чатами, проверить список чатов, переключиться между чатами
-- [ ] 4.5 Smoke: отправка сообщения и получение ответа — ввести текст, отправить, дождаться появления ответа в ленте (или карточки ошибки — оба исхода валидны)
-- [ ] 4.6 Smoke: экран настроек — открыть Settings, проверить наличие полей API-ключей и модели
-- [ ] 4.7 Smoke: восстановление после перезапуска — создать проект, перезапустить приложение, проверить что проект в списке недавних
-- [ ] 4.8 Убедиться, что `pnpm test:e2e` (с предварительным `pnpm build`) проходит все smoke-тесты
-- [ ] 4.9 Убедиться, что `pnpm test:e2e:quick` (на dev-сборке `electron-vite dev`) проходит все smoke-тесты
+- [x] 4.1 Smoke: приложение запускается и показывает главное окно — `toHaveTitle`, видимость `data-testid="main-layout"`
+- [x] 4.2 Smoke: создание нового проекта — замокать `dialog.showOpenDialog`, клик «Новый проект», проверка появления проекта в UI
+- [x] 4.3 Smoke: открытие существующего проекта — замокать `dialog.showOpenDialog`, клик «Открыть проект», проверка перехода
+- [x] 4.4 Smoke: навигация по чатам — открыть проект с чатами, проверить список чатов, переключиться между чатами
+- [x] 4.5 Smoke: отправка сообщения и получение ответа — ввести текст, отправить, дождаться появления ответа в ленте (или карточки ошибки — оба исхода валидны)
+- [x] 4.6 Smoke: экран настроек — открыть Settings, проверить наличие полей API-ключей и модели
+- [x] 4.7 Smoke: восстановление после перезапуска — создать проект, перезапустить приложение, проверить что проект в списке недавних
+- [x] 4.8 Убедиться, что `pnpm test:e2e` (с предварительным `pnpm build`) проходит все smoke-тесты
+- [x] 4.9 Убедиться, что `pnpm test:e2e:quick` (на dev-сборке `electron-vite dev`) проходит все smoke-тесты
 
 ## 5. Visual regression (5–10 экранов)
 

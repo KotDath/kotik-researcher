@@ -269,9 +269,10 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
   }, [])
 
   return (
-    <main className="chat">
+    <main className="chat" data-testid="chat-area">
       <div
         className="chat-feed"
+        data-testid="chat-feed"
         ref={feedRef}
         onScroll={(e) => {
           const el = e.currentTarget
@@ -279,19 +280,21 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
         }}
       >
         {items.length === 0 && (
-          <div className="chat-placeholder">Напишите сообщение, чтобы начать диалог</div>
+          <div className="chat-placeholder" data-testid="chat-placeholder">
+            Напишите сообщение, чтобы начать диалог
+          </div>
         )}
         {items.map((item) => {
           switch (item.kind) {
             case 'user':
               return (
-                <div key={item.id} className="msg msg-user">
+                <div key={item.id} className="msg msg-user" data-testid="message-user">
                   {item.text}
                 </div>
               )
             case 'assistant':
               return (
-                <div key={item.id} className="msg msg-assistant">
+                <div key={item.id} className="msg msg-assistant" data-testid="message-assistant">
                   {item.text}
                   {item.streaming && <span className="cursor">▍</span>}
                 </div>
@@ -302,10 +305,10 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
               return <ReasoningBlock key={item.id} item={item} />
             case 'error':
               return (
-                <div key={item.id} className="msg msg-error">
+                <div key={item.id} className="msg msg-error" data-testid="message-error">
                   <div className="msg-error-title">Ошибка</div>
                   <div className="msg-error-text">{item.message}</div>
-                  <button className="btn btn-sm" onClick={() => void retry()}>
+                  <button className="btn btn-sm" data-testid="retry-button" onClick={() => void retry()}>
                     Повторить
                   </button>
                 </div>
@@ -313,18 +316,19 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
           }
         })}
         {retrying && (
-          <div className="retry-banner">
+          <div className="retry-banner" data-testid="retry-banner">
             Ошибка провайдера, повторная попытка {retrying.attempt}/{retrying.maxAttempts}:{' '}
             {retrying.errorMessage}
           </div>
         )}
       </div>
 
-      {sendError && <div className="send-error">{sendError}</div>}
+      {sendError && <div className="send-error" data-testid="send-error">{sendError}</div>}
 
       <div className="chat-input-row">
         <textarea
           className="input chat-input"
+          data-testid="chat-input"
           placeholder="Сообщение агенту… (Enter — отправить, Shift+Enter — новая строка)"
           value={input}
           rows={3}
@@ -338,11 +342,16 @@ function ChatArea({ file, registerListener, onFeedChanged }: Props): React.JSX.E
         />
         <div className="chat-input-buttons">
           {generating && (
-            <button className="btn" onClick={() => void window.api.messages.abort()}>
+            <button className="btn" data-testid="stop-button" onClick={() => void window.api.messages.abort()}>
               Стоп
             </button>
           )}
-          <button className="btn btn-primary" onClick={() => void send()} disabled={!input.trim()}>
+          <button
+            className="btn btn-primary"
+            data-testid="send-button"
+            onClick={() => void send()}
+            disabled={!input.trim()}
+          >
             Отправить
           </button>
         </div>

@@ -63,7 +63,8 @@ export async function stabilizeWindow(window: Page): Promise<void> {
 }
 
 export const test = base.extend<{ electronApp: ElectronApplication; appWindow: Page }>({
-  electronApp: async (_fixtures, use) => {
+  // eslint-disable-next-line no-empty-pattern -- Playwright требует деструктуризацию первого аргумента fixture
+  electronApp: async ({}, use) => {
     const { electronApp, userDataDir } = await launchApp()
     await use(electronApp)
     await electronApp.close()

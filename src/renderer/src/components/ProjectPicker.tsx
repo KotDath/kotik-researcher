@@ -62,18 +62,22 @@ function ProjectPicker({ onOpenSettings }: Props): React.JSX.Element {
   }
 
   return (
-    <main className="picker">
+    <main className="picker" data-testid="project-picker">
       <h1 className="picker-title">Kotik Researcher</h1>
       <p className="picker-subtitle">Откройте или создайте проект — директорию для исследования</p>
 
       <div className="picker-actions">
-        <button className="btn btn-primary" onClick={() => void openDialog()}>
+        <button
+          className="btn btn-primary"
+          data-testid="open-project-button"
+          onClick={() => void openDialog()}
+        >
           Открыть проект…
         </button>
-        <button className="btn" onClick={() => void startCreate()}>
+        <button className="btn" data-testid="create-project-button" onClick={() => void startCreate()}>
           Создать проект…
         </button>
-        <button className="btn btn-ghost" onClick={onOpenSettings}>
+        <button className="btn btn-ghost" data-testid="picker-settings-button" onClick={onOpenSettings}>
           Настройки
         </button>
       </div>
@@ -81,6 +85,7 @@ function ProjectPicker({ onOpenSettings }: Props): React.JSX.Element {
       {creating && parentDir && (
         <form
           className="picker-create"
+          data-testid="create-project-form"
           onSubmit={(e) => {
             e.preventDefault()
             void confirmCreate()
@@ -92,12 +97,18 @@ function ProjectPicker({ onOpenSettings }: Props): React.JSX.Element {
           <input
             autoFocus
             className="input"
+            data-testid="project-name-input"
             placeholder="Имя проекта"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
           />
           <div className="picker-create-buttons">
-            <button className="btn btn-primary" type="submit" disabled={!newName.trim()}>
+            <button
+              className="btn btn-primary"
+              data-testid="confirm-create-button"
+              type="submit"
+              disabled={!newName.trim()}
+            >
               Создать
             </button>
             <button className="btn" type="button" onClick={() => setCreating(false)}>
@@ -107,13 +118,21 @@ function ProjectPicker({ onOpenSettings }: Props): React.JSX.Element {
         </form>
       )}
 
-      {error && <div className="picker-error">{error}</div>}
+      {error && <div className="picker-error" data-testid="picker-error">{error}</div>}
 
       {projects.length > 0 && (
-        <ul className="picker-list">
+        <ul className="picker-list" data-testid="recent-projects-list">
           {projects.map((p) => (
-            <li key={p.path} className={`picker-item ${p.available ? '' : 'unavailable'}`}>
-              <button className="picker-item-main" onClick={() => void openProject(p)}>
+            <li
+              key={p.path}
+              className={`picker-item ${p.available ? '' : 'unavailable'}`}
+              data-testid="recent-project-item"
+            >
+              <button
+                className="picker-item-main"
+                data-testid="recent-project-open"
+                onClick={() => void openProject(p)}
+              >
                 <span className="picker-item-name">
                   {p.name}
                   {!p.available && <span className="badge-unavailable">недоступен</span>}

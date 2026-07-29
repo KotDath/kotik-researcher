@@ -76,15 +76,15 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
 
   if (loadError) {
     return (
-      <div className="settings-overlay">
+      <div className="settings-overlay" data-testid="settings-view">
         <div className="settings">
           <div className="settings-header">
             <h2>Настройки</h2>
-            <button className="btn btn-ghost" onClick={onClose}>
+            <button className="btn btn-ghost" data-testid="settings-close-button" onClick={onClose}>
               ✕
             </button>
           </div>
-          <div className="settings-warning">Не удалось загрузить настройки: {loadError}</div>
+          <div className="settings-warning" data-testid="settings-load-error">Не удалось загрузить настройки: {loadError}</div>
           <div className="settings-footer">
             <button className="btn" onClick={onClose}>
               Закрыть
@@ -100,8 +100,8 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
 
   if (!data || !settings) {
     return (
-      <div className="settings-overlay">
-        <div className="settings">Загрузка…</div>
+      <div className="settings-overlay" data-testid="settings-view">
+        <div className="settings" data-testid="settings-loading">Загрузка…</div>
       </div>
     )
   }
@@ -240,11 +240,11 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
   }
 
   return (
-    <div className="settings-overlay">
+    <div className="settings-overlay" data-testid="settings-view">
       <div className="settings">
         <div className="settings-header">
           <h2>Настройки</h2>
-          <button className="btn btn-ghost" onClick={onClose}>
+          <button className="btn btn-ghost" data-testid="settings-close-button" onClick={onClose}>
             ✕
           </button>
         </div>
@@ -256,7 +256,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
           </div>
         )}
 
-        <section className="settings-section">
+        <section className="settings-section" data-testid="providers-section">
           <h3>Провайдеры LLM</h3>
           {[...configuredProviderIds].map((providerId) => {
             const info = data.providers.find((p) => p.id === providerId)
@@ -279,6 +279,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
                   <span>API-ключ</span>
                   <input
                     className="input"
+                    data-testid="api-key-input"
                     type="password"
                     placeholder="sk-…"
                     value={cfg.apiKey ?? ''}
@@ -386,6 +387,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
           />
           <select
             className="input settings-model-select"
+            data-testid="default-model-select"
             value={settings.defaultModel ? `${settings.defaultModel.providerId}/${settings.defaultModel.modelId}` : ''}
             onChange={(e) => {
               const value = e.target.value
@@ -417,11 +419,11 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
         </section>
 
         <div className="settings-footer">
-          {status && <span className="settings-status">{status}</span>}
+          {status && <span className="settings-status" data-testid="settings-status">{status}</span>}
           <button className="btn" onClick={onClose}>
             Закрыть
           </button>
-          <button className="btn btn-primary" onClick={() => void save()}>
+          <button className="btn btn-primary" data-testid="settings-save-button" onClick={() => void save()}>
             Сохранить
           </button>
         </div>

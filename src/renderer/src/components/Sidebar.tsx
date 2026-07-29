@@ -74,35 +74,51 @@ function Sidebar({
   }
 
   return (
-    <aside className="sidebar">
+    <aside className="sidebar" data-testid="sidebar">
       <div className="sidebar-project" title={project.path}>
-        <div className="sidebar-project-name">{project.name}</div>
+        <div className="sidebar-project-name" data-testid="project-name">{project.name}</div>
         <div className="sidebar-project-actions">
-          <button className="btn btn-ghost btn-sm" onClick={onChangeProject} title="Сменить проект">
+          <button
+            className="btn btn-ghost btn-sm"
+            data-testid="change-project-button"
+            onClick={onChangeProject}
+            title="Сменить проект"
+          >
             ⇄
           </button>
-          <button className="btn btn-ghost btn-sm" onClick={onOpenSettings} title="Настройки">
+          <button
+            className="btn btn-ghost btn-sm"
+            data-testid="sidebar-settings-button"
+            onClick={onOpenSettings}
+            title="Настройки"
+          >
             ⚙
           </button>
         </div>
       </div>
 
-      <button className="btn btn-primary sidebar-new-chat" onClick={() => void createChat()}>
+      <button
+        className="btn btn-primary sidebar-new-chat"
+        data-testid="new-chat-button"
+        onClick={() => void createChat()}
+      >
         + Новый чат
       </button>
 
       <input
         className="input sidebar-search"
+        data-testid="chat-search-input"
         placeholder="Поиск чатов…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
 
-      <ul className="chat-list">
+      <ul className="chat-list" data-testid="chat-list">
         {chats.map((chat) => (
           <li
             key={chat.file}
             className={`chat-list-item ${chat.file === activeChat ? 'active' : ''}`}
+            data-testid="chat-list-item"
           >
             {renaming === chat.file ? (
               <input
@@ -118,12 +134,16 @@ function Sidebar({
               />
             ) : (
               <>
-                <button className="chat-list-main" onClick={() => void select(chat.file)}>
+                <button
+                  className="chat-list-main"
+                  data-testid="chat-item-select"
+                  onClick={() => void select(chat.file)}
+                >
                   <span className="chat-list-name">
                     {chat.isGenerating && <span className="chat-generating" title="Генерация…">●</span>}
                     {chat.name}
                   </span>
-                  <span className="chat-list-date">
+                  <span className="chat-list-date" data-testid="chat-list-date">
                     {new Date(chat.lastActivity).toLocaleString()}
                   </span>
                 </button>
@@ -150,7 +170,9 @@ function Sidebar({
             )}
           </li>
         ))}
-        {chats.length === 0 && <li className="chat-list-empty">Чатов нет</li>}
+        {chats.length === 0 && (
+          <li className="chat-list-empty" data-testid="chat-list-empty">Чатов нет</li>
+        )}
       </ul>
     </aside>
   )

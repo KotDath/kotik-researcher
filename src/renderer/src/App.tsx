@@ -55,7 +55,7 @@ function App(): React.JSX.Element {
   const refreshChats = useCallback(() => setChatsVersion((v) => v + 1), [])
 
   if (view === 'loading') {
-    return <main className="app-loading">Загрузка…</main>
+    return <main className="app-loading" data-testid="app-loading">Загрузка…</main>
   }
 
   return (
@@ -64,7 +64,7 @@ function App(): React.JSX.Element {
         <ProjectPicker onOpenSettings={() => setSettingsOpen(true)} />
       ) : (
         project && (
-          <div className="app-main">
+          <div className="app-main" data-testid="main-layout">
             <Sidebar
               key={project.path}
               project={project}
@@ -82,7 +82,7 @@ function App(): React.JSX.Element {
                 onFeedChanged={refreshChats}
               />
             ) : (
-              <main className="chat-empty">Нет активного чата</main>
+              <main className="chat-empty" data-testid="chat-empty">Нет активного чата</main>
             )}
           </div>
         )
