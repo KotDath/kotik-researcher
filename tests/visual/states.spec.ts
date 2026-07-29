@@ -100,7 +100,7 @@ test('5.4 модальная форма создания проекта', async 
     await expect(window).toHaveScreenshot('create-project-modal.png', {
       ...SHOT,
       // путь родительской папки содержит mkdtemp-суффикс — динамический регион
-      mask: [window.locator('.picker-create-parent')]
+      mask: [window.getByTestId('create-form-parent')]
     })
   })
 })

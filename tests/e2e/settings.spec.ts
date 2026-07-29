@@ -9,18 +9,18 @@ test('экран настроек: поля API-ключей и выбор мо�
   await expect(appWindow.getByTestId('providers-section')).toBeVisible()
 
   // поле API-ключа встроенного провайдера: добавляем первого из каталога
-  const addSelect = appWindow.getByTestId('providers-section').locator('select').first()
+  const addSelect = appWindow.getByTestId('add-provider-select')
   const firstProvider = addSelect.locator('option').nth(1)
   if ((await firstProvider.count()) > 0) {
     await addSelect.selectOption({ index: 1 })
-    await appWindow.getByRole('button', { name: 'Добавить', exact: true }).click()
+    await appWindow.getByTestId('add-provider-button').click()
     await expect(appWindow.getByTestId('api-key-input').first()).toBeVisible()
   }
 
   // поле API-ключа custom endpoint видно всегда + селект модели по умолчанию
-  await expect(appWindow.locator('input[type="password"]').first()).toBeVisible()
+  await expect(appWindow.getByTestId('custom-endpoint-apikey-input')).toBeVisible()
   await expect(appWindow.getByTestId('default-model-select')).toBeVisible()
 
-  await appWindow.getByRole('button', { name: 'Закрыть', exact: true }).click()
+  await appWindow.getByTestId('settings-close-footer-button').click()
   await expect(appWindow.getByTestId('settings-view')).toBeHidden()
 })

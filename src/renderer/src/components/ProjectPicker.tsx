@@ -91,7 +91,7 @@ function ProjectPicker({ onOpenSettings }: Props): React.JSX.Element {
             void confirmCreate()
           }}
         >
-          <div className="picker-create-parent">
+          <div className="picker-create-parent" data-testid="create-form-parent">
             Новая папка в: <code>{parentDir}</code>
           </div>
           <input

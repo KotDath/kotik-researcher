@@ -306,6 +306,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
           <div className="settings-add-provider">
             <select
               className="input"
+              data-testid="add-provider-select"
               value={addProviderId}
               onChange={(e) => setAddProviderId(e.target.value)}
             >
@@ -318,7 +319,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
                   </option>
                 ))}
             </select>
-            <button className="btn" onClick={addProvider} disabled={!addProviderId}>
+            <button className="btn" data-testid="add-provider-button" onClick={addProvider} disabled={!addProviderId}>
               Добавить
             </button>
           </div>
@@ -360,6 +361,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
             />
             <input
               className="input"
+              data-testid="custom-endpoint-apikey-input"
               type="password"
               placeholder="API-ключ (необязательно)"
               value={customDraft.apiKey}
@@ -420,7 +422,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
 
         <div className="settings-footer">
           {status && <span className="settings-status" data-testid="settings-status">{status}</span>}
-          <button className="btn" onClick={onClose}>
+          <button className="btn" data-testid="settings-close-footer-button" onClick={onClose}>
             Закрыть
           </button>
           <button className="btn btn-primary" data-testid="settings-save-button" onClick={() => void save()}>

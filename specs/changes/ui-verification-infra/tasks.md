@@ -117,15 +117,15 @@
 
 ## 12. Проверка
 
-- [ ] 12.1 `pnpm typecheck` проходит (node + web конфиги)
-- [ ] 12.2 `pnpm lint` проходит (ESLint flat config)
-- [ ] 12.3 `pnpm build` собирается без ошибок
-- [ ] 12.4 Smoke: `pnpm build && pnpm start` — собранное приложение запускается, главное окно отображается
-- [ ] 12.5 `pnpm test:unit` проходит (все Vitest unit-тесты зелёные)
-- [ ] 12.6 `pnpm test:e2e` проходит (все Playwright E2E smoke-тесты на production-сборке)
-- [ ] 12.7 `pnpm test:e2e:quick` проходит (все Playwright E2E smoke-тесты на dev-сборке)
-- [ ] 12.8 `pnpm test:visual` проходит (все visual regression тесты без отличий от baseline)
-- [ ] 12.9 `pnpm test` проходит (агрегирующая команда: unit + e2e + visual)
-- [ ] 12.10 LRN-20260729-001 smoke: ручной прогон полного цикла UI-верификации — `pnpm test:agent:electron`, подключение MCP с `--cdp-endpoint`, `browser_snapshot`, `browser_screenshot` — агент получает accessibility-дерево и скриншот живого приложения (доказательство: скриншот / лог инструментов)
+- [x] 12.1 `pnpm typecheck` проходит (node + web конфиги)
+- [x] 12.2 `pnpm lint` проходит (ESLint flat config)
+- [x] 12.3 `pnpm build` собирается без ошибок
+- [x] 12.4 Smoke: `pnpm build && pnpm start` — собранное приложение запускается, главное окно отображается
+- [x] 12.5 `pnpm test:unit` проходит (все Vitest unit-тесты зелёные)
+- [x] 12.6 `pnpm test:e2e` проходит (все Playwright E2E smoke-тесты на production-сборке)
+- [x] 12.7 `pnpm test:e2e:quick` проходит (все Playwright E2E smoke-тесты на dev-сборке)
+- [x] 12.8 `pnpm test:visual` проходит (все visual regression тесты без отличий от baseline)
+- [x] 12.9 `pnpm test` проходит (агрегирующая команда: unit + e2e + visual)
+- [x] 12.10 LRN-20260729-001 smoke: ручной прогон полного цикла UI-верификации — `pnpm test:agent:electron`, подключение MCP с `--cdp-endpoint`, `browser_snapshot`, `browser_screenshot` — агент получает accessibility-дерево и скриншот живого приложения (доказательство: скриншот / лог инструментов)
 - [ ] 12.11 Проверка ui-reviewer hard gate: симулировать ui-reviewer с FAIL — оркестратор должен заблокировать approve
-- [ ] 12.12 Проверка сценариев дельты ui-verification: все 18 требований покрыты работающими тестами и процессами
+- [x] 12.12 Проверка сценариев дельты ui-verification: все 18 требований покрыты работающими тестами и процессами
