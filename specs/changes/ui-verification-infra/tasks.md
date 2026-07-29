@@ -2,11 +2,11 @@
 
 ## 1. DevDependencies и npm-скрипты
 
-- [ ] 1.1 Установить devDependencies: `pnpm add -D @playwright/test vitest @testing-library/react @testing-library/jest-dom`
-- [ ] 1.2 Установить `@playwright/mcp`: `pnpm add -D @playwright/mcp` (агент-driven верификация, MCP-сервер)
-- [ ] 1.3 Установить Playwright-браузеры: `npx playwright install chromium` (Electron использует тот же Chromium, нужен для toHaveScreenshot)
-- [ ] 1.4 Добавить в `package.json` скрипты: `test`, `test:unit`, `test:e2e`, `test:e2e:quick`, `test:visual`, `test:agent:electron`, `test:agent:dev`
-- [ ] 1.5 Проверить, что `pnpm test` (вызов агрегирующего скрипта) не падает на отсутствующих тестах (деградация до «no tests found»)
+- [x] 1.1 Установить devDependencies: `pnpm add -D @playwright/test vitest @testing-library/react @testing-library/jest-dom`
+- [x] 1.2 Установить `@playwright/mcp`: `pnpm add -D @playwright/mcp` (агент-driven верификация, MCP-сервер)
+- [x] 1.3 Установить Playwright-браузеры: `npx playwright install chromium` (Electron использует тот же Chromium, нужен для toHaveScreenshot)
+- [x] 1.4 Добавить в `package.json` скрипты: `test`, `test:unit`, `test:e2e`, `test:e2e:quick`, `test:visual`, `test:agent:electron`, `test:agent:dev`
+- [x] 1.5 Проверить, что `pnpm test` (вызов агрегирующего скрипта) не падает на отсутствующих тестах (деградация до «no tests found»)
 
 ## 2. Vitest workspace и конфигурация
 

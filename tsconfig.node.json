@@ -10,5 +10,16 @@
     "types": ["node"],
     "composite": true
   },
-  "include": ["electron.vite.config.ts", "src/main", "src/preload", "src/shared"]
+  "include": [
+    "electron.vite.config.ts",
+    "vite.renderer.config.ts",
+    "vitest.workspace.ts",
+    "playwright.config.ts",
+    "src/main",
+    "src/preload",
+    "src/shared",
+    "tests/e2e",
+    "tests/visual",
+    "tests/unit/**/*.test.ts"
+  ]
 }

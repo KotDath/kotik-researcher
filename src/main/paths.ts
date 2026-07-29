@@ -2,6 +2,13 @@ import { app } from 'electron'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 
+// Тестовый режим Playwright (tasks 3.3): --e2e + E2E_USER_DATA_DIR изолируют
+// userData, чтобы E2E-тесты не трогали реальные данные пользователя.
+// Должно выполняться до первого app.getPath('userData').
+if (process.argv.includes('--e2e') && process.env.E2E_USER_DATA_DIR) {
+  app.setPath('userData', process.env.E2E_USER_DATA_DIR)
+}
+
 // Изоляция от пользовательского ~/.pi (требование «Автономность от установленного
 // pi CLI»): pi читает PI_CODING_AGENT_DIR в getAgentDir() — все его пути (auth.json,
 // models.json, sessions/, settings.json) оказываются внутри наших данных.
