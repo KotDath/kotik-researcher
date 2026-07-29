@@ -1,7 +1,7 @@
 ---
 description: Ведёт глубокое vision-интервью с пользователем и дистиллирует его в specs/changes/<change>/vision.md (дистиллят + полный лог Q&A). Use when новая фича требует формирования vision перед написанием спеки (внутри kotik-feature). NOT FOR написания спеки, proposal, tasks (это spec-writer), кода, самостоятельных исследований без триггера.
 mode: subagent
-model: kimi-for-coding/k3
+model: deepseek/deepseek-v4-pro
 permission:
   edit:
     "*": deny

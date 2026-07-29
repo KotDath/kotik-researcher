@@ -1,7 +1,7 @@
 ---
 description: Создаёт и дорабатывает спецификации изменений (proposal, дельта-спеки, design, tasks) в specs/changes/ по конвенциям проекта, работая по vision.md от идеатора. Use when нужно оформить новую фичу в change или обновить артефакты существующего change. NOT FOR написания кода в src/, веб-исследований, ревью реализации, полного vision-интервью (это ideator).
 mode: subagent
-model: kimi-for-coding/k3
+model: deepseek/deepseek-v4-pro
 permission:
   edit:
     "*": deny
