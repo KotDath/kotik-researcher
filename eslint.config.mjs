@@ -4,5 +4,11 @@ import tseslint from 'typescript-eslint'
 export default tseslint.config(
   { ignores: ['out', 'dist', 'node_modules', '.opencode'] },
   js.configs.recommended,
-  ...tseslint.configs.recommended
+  ...tseslint.configs.recommended,
+  {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: { console: 'readonly', process: 'readonly' }
+    }
+  }
 )

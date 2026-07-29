@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 // Быстрый режим агентской UI-верификации (design.md, решение 5):
 // renderer-only dev-server + Playwright MCP. Не проверяет main/IPC —
 // финальная верификация только через pnpm test:agent:electron.
