@@ -1,0 +1,84 @@
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+
+const root = process.cwd()
+const agentsDir = join(root, '.opencode/agents')
+const skillsDir = join(root, '.opencode/skills')
+const commandsDir = join(root, '.opencode/commands')
+const errors = []
+
+const allowedModels = new Set([
+  'kimi-for-coding/k3',
+  'deepseek/deepseek-v4-pro',
+  'opencode-go/deepseek-v4-flash',
+  'openai/gpt-5.6-sol'
+])
+
+function frontmatter(path) {
+  const text = readFileSync(path, 'utf8')
+  const match = text.match(/^---\n([\s\S]*?)\n---/)
+  if (!match) {
+    errors.push(`${path}: missing YAML frontmatter`)
+    return ''
+  }
+  return match[1]
+}
+
+const agentFiles = readdirSync(agentsDir)
+  .filter((name) => name.endsWith('.md'))
+  .sort()
+const agentNames = new Set(agentFiles.map((name) => name.slice(0, -3)))
+agentNames.add('explore')
+
+for (const file of agentFiles) {
+  const path = join(agentsDir, file)
+  const fm = frontmatter(path)
+  const model = fm.match(/^model:\s*(\S+)/m)?.[1]
+  const mode = fm.match(/^mode:\s*(\S+)/m)?.[1]
+  if (!model) errors.push(`${file}: model is required; otherwise K3 is inherited`)
+  else if (!allowedModels.has(model)) errors.push(`${file}: unsupported model ${model}`)
+  if (!mode) errors.push(`${file}: mode is required`)
+
+  const taskBlock = fm.match(/^ {2}task:\n((?: {4}.*\n?)*)/m)?.[1] ?? ''
+  for (const [, target] of taskBlock.matchAll(/^ {4}([^"*][^:]*):\s*allow$/gm)) {
+    if (!agentNames.has(target)) errors.push(`${file}: task target ${target} does not exist`)
+  }
+}
+
+const reviewer = frontmatter(join(agentsDir, 'reviewer.md'))
+if (!/^model:\s*openai\/gpt-5\.6-sol$/m.test(reviewer)) {
+  errors.push('reviewer.md: reviewer must use openai/gpt-5.6-sol')
+}
+if (!/^variant:\s*medium$/m.test(reviewer)) {
+  errors.push('reviewer.md: reviewer must use variant medium')
+}
+
+const config = JSON.parse(readFileSync(join(root, 'opencode.json'), 'utf8'))
+for (const [name, value] of Object.entries(config.agent ?? {})) {
+  if (name !== 'explore' && value.model) {
+    errors.push(`opencode.json: model for ${name} must live in its subagent frontmatter`)
+  }
+}
+
+const skillNames = new Set(
+  readdirSync(skillsDir).filter((name) => statSync(join(skillsDir, name)).isDirectory())
+)
+for (const name of skillNames) {
+  const path = join(skillsDir, name, 'SKILL.md')
+  const fm = frontmatter(path)
+  const declared = fm.match(/^name:\s*(\S+)/m)?.[1]
+  if (declared !== name) errors.push(`${path}: name must match directory (${name})`)
+}
+
+for (const file of readdirSync(commandsDir).filter((name) => name.endsWith('.md'))) {
+  const text = readFileSync(join(commandsDir, file), 'utf8')
+  const skill = text.match(/скилл\s+([a-z0-9-]+)/i)?.[1]
+  if (skill && !skillNames.has(skill)) errors.push(`${file}: missing skill ${skill}`)
+}
+
+if (errors.length) {
+  for (const error of errors) console.error(`ERROR: ${error}`)
+  process.exitCode = 1
+} else {
+  console.log(`Agent system OK: ${agentFiles.length} agents, ${skillNames.size} skills`)
+}

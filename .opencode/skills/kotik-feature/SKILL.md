@@ -1,63 +1,86 @@
 ---
 name: kotik-feature
-description: Запускает SDD-цикл новой фичи — preflight-проверки, глубокое vision-интервью через ideator (vision.md) и создание спеки через spec-writer в specs/changes/. Use when пользователь хочет новую фичу или возможность, говорит «хочу сделать», «давай добавим», «нужна фича», «надо реализовать», или явно вызывает /kotik-feature. NOT FOR исследований без цели фичи (это kotik-research), принятия стадий и архивации (kotik-approve), точечных правок кода без спеки.
+description: Ведёт новую возможность приложения через SDD с выбором small/normal/large, продуктовых контуров и semantic risk; для large включает консилиум до architecture/spec. Use when пользователь хочет новую capability, новый workflow или существенное расширение поведения. NOT FOR наблюдаемого дефекта (kotik-bugfix), локальной обратимой правки (kotik-small-change) или чистого research.
 ---
 
-# kotik-feature — стадия «спека» SDD-цикла
+# Feature
 
-Вход: описание фичи от пользователя (может быть одной фразой — интервью
-достроит остальное).
+## 1. Routing card
 
-## 1. Preflight-гейты
+Объявить профиль и классифицировать:
 
-При провале любого — не начинать, сказать пользователю, что чинить:
+```text
+Profile: feature
+Size: small | normal | large
+Contours: ui | core | data | agentic
+Risk: low | medium | high
+```
 
-1. `git status` — дерево чистое. Грязное → предупредить, что реализация
-   смешается с незакоммиченными правками; продолжить только с явного
-   разрешения пользователя.
-2. В specs/changes/ нет другого change со `Status: draft`. Есть → уточнить
-   через question tool: продолжаем его или создаём новый.
-3. Грепнуть docs/LESSONS.md по ключевым словам темы — релевантные уроки
-   учесть и включить в бриф spec-writer'у.
+Strong large-signals: greenfield/major subsystem; renderer+main+storage;
+data migration; security/permissions; breaking IPC/API; неизвестный
+external SDK lifecycle; минимум три независимых workstream; труднообратимое
+решение. Soft signals: много failure states, concurrency/recovery,
+конкурирующие архитектуры, новая visual grammar.
 
-## 2. Фактура (research on-demand)
+Ориентир: 0–1 сигнал — small, 2–3 — normal, 4+ или один strong — large.
+Large требует объяснения и подтверждения пользователя.
 
-Research — не обязательная стадия пайплайна, а capability, вызываемая в
-любой точке цикла:
+Semantic escalators повышают Risk независимо от размера diff:
+identity/migrations/provenance, embeddings/reindexing, nested agent
+workflow, permissions, formal logic, breaking IPC/API.
 
-- Заранее: факт-пробел о внешних библиотеках/подходах очевиден уже на
-  входе → делегировать researcher и дождаться отчёта до интервью.
-- В интервью: всплывшие пробелы закрывает сам идеатор через вложенного
-  researcher'а.
-- При спеке: spec-writer эскалирует через оркестратора с маркером
-  «требует research».
+## 2. Vision
 
-Не исследовать самому.
+- small low-risk → ideator-fast;
+- normal/large или semantic-high → ideator-deep.
 
-## 3. Vision-интервью
+Vision обязан закрыть все измерения карты из AGENTS.md. Research разрешён
+вложенно только для конкретного внешнего факта, блокирующего решение.
 
-Делегировать ideator проведение глубокого интервью. Бриф: дословный запрос
-пользователя, что отвергнуто, пути к research-отчётам, уроки из
-LESSONS.md, имя change в kebab-case.
+## 3. Architecture
 
-Идеатор сам интервьюирует пользователя через question tool по своему
-протоколу и инкрементально пишет specs/changes/<change>/vision.md — не
-транслировать вопросы и не сокращать интервью. Дождаться возврата: путь к
-vision.md, резюме, открытые вопросы.
+- small low-risk: design.md не нужен;
+- normal или semantic-medium/high: solution-architect создаёт design.md;
+- large: сначала консилиум, затем solution-architect синтезирует design.md;
+- architecture-reviewer обязателен для large/high-risk, для normal — когда
+  есть cross-contour design или необратимое решение.
 
-Если в открытых вопросах есть маркер «требует research» — спросить
-пользователя через question tool: закрыть research'ем сейчас или оставить
-открытым.
+### Консилиум large feature
 
-## 4. Спека
+Запустить независимый первый раунд по одному подтверждённому vision:
+solution-architect, architecture-reviewer, implementation-planner,
+test-strategist. Добавить security-reviewer при security/data exposure и
+ui-designer при новой visual grammar. Researcher закрывает только
+конкретные внешние пробелы.
 
-Делегировать spec-writer создание change. Бриф: путь к vision.md, пути к
-research-отчётам, имя change. Spec-writer сам задаст verification-вопросы
-при пробелах — не транслировать их за него.
+Оркестратор собирает конфликты и отправляет адресные вопросы тем же task_id.
+Свободного group chat нет. После второго раунда solution-architect
+синтезирует один design.
 
-## 5. Итог
+## 4. Specification
 
-Показать пользователю: proposal, список требований по дельтам, количество
-задач. Сказать явно: «правьте текстом или примите через /kotik-approve».
+- small low-risk → spec-writer-fast;
+- normal/large/semantic-high → spec-writer-deep.
 
-Код не пишется до одобрения пользователя.
+Spec-writer переводит vision/design в proposal/deltas/tasks, но не
+принимает архитектурные решения. Показать пользователю proposal,
+requirements и задачи. Код не писать до явного `kotik-approve`.
+
+## 5. Implementation and verification
+
+После approval:
+
+1. Flash implementer реализует workstreams зрелого проекта.
+2. K3 bootstrap-implementer допустим только для подтверждённого
+   greenfield/bootstrap и должен передать стабилизированный каркас Flash.
+3. Test-author пишет необходимые automated tests.
+4. Фиксированные pnpm-команды выполняются напрямую по tasks.md; отдельный
+   LLM test-runner не создаётся.
+5. Reviewer Sol/medium проверяет code/spec.
+6. App-tester проходит изменённый live flow.
+7. Для renderer/both: Flash строит функциональный/семантический каркас;
+   ui-designer K3 подключается для новой visual grammar/важного экрана,
+   затем независимый ui-reviewer K3.
+8. Для formal logic дополнительно вызвать logic-reviewer.
+
+Generator/evaluator цикл ограничен тремя итерациями.

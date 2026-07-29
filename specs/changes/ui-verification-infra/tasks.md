@@ -129,3 +129,62 @@
 - [x] 12.10 LRN-20260729-001 smoke: ручной прогон полного цикла UI-верификации — `pnpm test:agent:electron`, подключение MCP с `--cdp-endpoint`, `browser_snapshot`, `browser_screenshot` — агент получает accessibility-дерево и скриншот живого приложения (доказательство: скриншот / лог инструментов)
 - [ ] 12.11 Проверка ui-reviewer hard gate: симулировать ui-reviewer с FAIL — оркестратор должен заблокировать approve
 - [x] 12.12 Проверка сценариев дельты ui-verification: все 18 требований покрыты работающими тестами и процессами
+
+## 13. Унификация MCP — один CDP-сервер (решение A)
+
+- [ ] 13.1 Удалить `mcp.playwright-cdp` из `opencode.json`
+- [ ] 13.2 Изменить `mcp.playwright` на единый CDP-сервер: команда `["npx", "-y", "@playwright/mcp@latest", "--cdp-endpoint", "http://127.0.0.1:9222"]`
+- [ ] 13.3 Переделать `pnpm test:agent:dev`: electron-vite dev с `--remote-debugging-port=9222` (main из исходников с HMR + renderer из vite dev-server), а не вывод инструкции
+- [ ] 13.4 Удалить из кода и документации все упоминания автономного Chromium-режима MCP и сервера `playwright-cdp`
+- [ ] 13.5 Обновить `docs/ui-review.md`: ссылки на MCP-инструменты с префиксом `playwright_*` (единый сервер)
+- [ ] 13.6 Проверить живой прогон: `pnpm test:agent:dev` + MCP `browser_snapshot` — агент получает accessibility-дерево electron-vite dev-сборки
+
+## 14. Невидимые окна (решение B)
+
+- [ ] 14.1 В `src/main/index.ts` при наличии `--e2e` в argv создавать BrowserWindow с `show: false` и `backgroundThrottling: false`
+- [ ] 14.2 Скриншот-пруф: написать тест, запускающий приложение с `--e2e` и делающий `page.screenshot()` — скриншот ДОЛЖЕН содержать корректное изображение интерфейса (не пустой/чёрный), закоммитить как baseline
+- [ ] 14.3 Проверить, что `pnpm test:e2e` и `pnpm test:visual` проходят на скрытых окнах без изменений baseline
+
+## 15. Agent-driven functional verification
+
+- [x] 15.1 Добавить/проверить `.opencode/agents/app-tester.md`: Flash,
+  deny:edit, live Electron через единый MCP `playwright`, PASS/FAIL с
+  steps/evidence
+- [x] 15.2 Проверить `.opencode/agents/ui-reviewer.md`: K3, deny:edit,
+  инструменты `playwright_*`, независимый visual verdict
+- [x] 15.3 Не создавать LLM test-runner: deterministic pnpm-команды
+  выполняются непосредственно из tasks.md
+
+## 16. Ребалансировка агентов и конвейер
+
+- [x] 16.1 Implementer закреплён на Flash, выполняет deterministic checks,
+  сообщает `Change touches` и `Contours`, не выполняет exploratory testing
+- [x] 16.2 Reviewer закреплён на GPT-5.6 Sol/medium и возвращает
+  evidence-backed findings; узкий reproducer разрешён
+- [x] 16.3 Оркестратор диспетчеризует reviewer → app-tester →
+  ui-reviewer(renderer/both); новая visual grammar может проходить
+  ui-designer до финального review
+- [x] 16.4 Добавить протокол `ACCEPT | DISPUTE | PRE_EXISTING` и лимит
+  трёх generator/evaluator итераций
+
+## 17. Документация (обновление)
+
+- [x] 17.1 Обновить `AGENTS.md` секцию «App и UI verification»:
+  - Конвейер: deterministic checks → reviewer → app-tester → ui-reviewer
+  - Оба режима — Electron CDP (быстрый = electron-vite dev, полный = prod build)
+  - Единый MCP-сервер `playwright`, префикс инструментов `playwright_*`
+  - Невидимые окна (`show: false`, `backgroundThrottling: false`)
+  - Закреплённые модели непосредственно во frontmatter субагентов
+  - Сохранить: запрет автообновления baseline, лимит 3 итераций, проверку состояний и размеров
+
+## 18. Проверка (дополнения)
+
+- [ ] 18.1 Перепроверить `pnpm test:agent:dev` + MCP `browser_snapshot` на electron-vite dev-сборке (после 13.3)
+- [ ] 18.2 Перепроверить `pnpm test:agent:electron` + MCP `browser_take_screenshot` на prod-сборке со скрытым окном (после 14.2)
+- [ ] 18.3 Проверить, что app-tester проходит пользовательский flow и
+  возвращает evidence
+- [ ] 18.4 Проверить, что reviewer запускается на Sol/medium, implementer и
+  app-tester на Flash, ui-reviewer на K3
+- [ ] 18.5 Проверить сценарии из новой дельты (конвейер, невидимые окна,
+  модели, контракт implementer'а)
+- [ ] 18.6 Итоговый smoke: `pnpm typecheck && pnpm lint && pnpm build && pnpm test` — всё зелёное

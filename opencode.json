@@ -11,10 +11,6 @@
   "mcp": {
     "playwright": {
       "type": "local",
-      "command": ["npx", "-y", "@playwright/mcp@latest"]
-    },
-    "playwright-cdp": {
-      "type": "local",
       "command": [
         "npx",
         "-y",

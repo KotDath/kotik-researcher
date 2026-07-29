@@ -1,5 +1,10 @@
 Status: draft
 
+Profile: <small-change | bugfix | feature>
+Size: <small | normal | large>
+Contours: <ui | core | data | agentic>
+Risk: <low | medium | high>
+
 # Proposal: <имя-change>
 
 ## Зачем

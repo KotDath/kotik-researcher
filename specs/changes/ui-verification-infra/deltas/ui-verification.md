@@ -2,9 +2,208 @@
 
 ## Purpose
 
-Инфраструктура тестирования и верификации UI приложения: трёхслойная (Vitest unit + Playwright E2E + visual regression), агент-driven верификация через Playwright MCP в двух режимах, ui-reviewer субагент для SDD-цикла, документация критериев проверки UI. Capability гарантирует, что каждый change, затрагивающий renderer, проходит обязательную проверку живого UI перед approve.
+Инфраструктура тестирования и верификации UI приложения: Vitest unit, Playwright E2E, visual regression и agent-driven проверка через единый CDP-транспорт. Deterministic-команды выполняются непосредственно по tasks.md; независимые app-tester и ui-reviewer проверяют поведение и визуальный результат живого приложения.
 
 ## ADDED Requirements
+
+### Requirement: Разделение deterministic и agent-driven проверок
+
+Система НЕ ДОЛЖНА создавать LLM-субагента только для запуска фиксированных
+pnpm-команд. Implementer ДОЛЖЕН выполнить deterministic checks из tasks.md.
+Reviewer ДОЛЖЕН независимо проверить code/spec, app-tester — поведение
+изменённого live flow, а ui-reviewer при renderer/both — визуальный
+результат.
+
+#### Scenario: Полный gate renderer-change
+
+- **GIVEN** implementer завершил change, затрагивающий renderer
+- **WHEN** deterministic checks зелёные, reviewer вернул APPROVE,
+  app-tester вернул PASS и ui-reviewer вернул PASS
+- **THEN** оркестратор может предложить пользователю принять change
+
+#### Scenario: Agent tester находит дефект поведения
+
+- **GIVEN** deterministic tests зелёные
+- **WHEN** app-tester воспроизводит сломанный пользовательский flow
+- **THEN** approve блокируется evidence от app-tester
+- **AND** change возвращается implementer'у
+
+### Requirement: Невидимые окна при тестовых и агентских прогонах
+
+При запуске с флагом `--e2e` (все тестовые и агентские прогоны) main ДОЛЖЕН создавать BrowserWindow с `show: false` (окно не отображается) и `backgroundThrottling: false` (renderer продолжает отрисовку). Система НЕ ДОЛЖНА перехватывать фокус пользователя или показывать окна приложения во время тестовых и агентских прогонов. Скриншоты ДОЛЖНЫ работать: CDP `Page.captureScreenshot` получает изображение из композитора renderer'а независимо от видимости окна.
+
+#### Scenario: E2E-тест не показывает окно
+
+- **GIVEN** приложение запущено с флагом `--e2e` через `_electron.launch()`
+- **WHEN** выполняется E2E-тест
+- **THEN** BrowserWindow создан с `show: false`
+- **AND** окно приложения не появляется на экране
+- **AND** пользователь не теряет фокус
+
+#### Scenario: Скриншот скрытого окна корректен
+
+- **GIVEN** окно приложения скрыто (`show: false`)
+- **WHEN** Playwright выполняет `page.screenshot()` или `toHaveScreenshot()`
+- **THEN** скриншот содержит корректное изображение интерфейса (не пустой/чёрный)
+- **AND** визуальные регрессии проходят на скрытом окне
+
+### Requirement: Закреплённые модели агентов верификации
+
+Система ДОЛЖНА закреплять модели непосредственно во frontmatter каждого
+субагента: implementer и app-tester — `opencode-go/deepseek-v4-flash`,
+reviewer — `openai/gpt-5.6-sol` с `variant: medium`, ui-reviewer —
+`kimi-for-coding/k3`.
+
+#### Scenario: Субагент не наследует модель оркестратора
+
+- **WHEN** OpenCode загружает implementer, app-tester или reviewer
+- **THEN** frontmatter содержит явный `model`
+- **AND** субагент не наследует K3 оркестратора
+
+#### Scenario: ui-reviewer использует k3 с vision
+
+- **WHEN** оркестратор вызывает ui-reviewer
+- **THEN** ui-reviewer запускается с моделью `kimi-for-coding/k3`
+- **AND** агент способен оценивать скриншоты визуально
+
+### Requirement: Reviewer — evidence-backed code/spec review
+
+Reviewer ДОЛЖЕН проверять покрытие требований, корректность, ошибки и edge
+cases и возвращать evidence-backed findings. Он МОЖЕТ запустить узкий
+reproducer при недостатке доказательств, но НЕ ДОЛЖЕН механически
+дублировать весь deterministic suite.
+
+#### Scenario: Major finding содержит evidence
+
+- **WHEN** reviewer возвращает blocker или major
+- **THEN** finding содержит файл:строку, нарушенное требование и reproducer
+- **AND** implementer отвечает ACCEPT, DISPUTE или PRE_EXISTING
+
+## MODIFIED Requirements
+
+### Requirement: Агент-driven верификация — быстрый режим
+
+Система ДОЛЖНА поддерживать быстрый режим агентской UI-верификации: `pnpm test:agent:dev` запускает electron-vite dev с `--remote-debugging-port=9222` (main из исходников с HMR, renderer из vite dev-server). Агент через Playwright MCP (единственный сервер `playwright` с `--cdp-endpoint http://127.0.0.1:9222`) подключается к Electron-приложению и проверяет UI. Режим предназначен для итеративной разработки и быстрой самопроверки UI. Режим ДОЛЖЕН использовать полноценное Electron-приложение (main + preload + renderer), НЕ голый браузер против dev-server.
+
+#### Scenario: Агент проверяет electron-vite dev через CDP
+
+- **GIVEN** агент имеет доступ к Playwright MCP (сервер `playwright`)
+- **WHEN** агент выполняет `pnpm test:agent:dev`
+- **AND** MCP уже подключён к `--cdp-endpoint http://127.0.0.1:9222`
+- **THEN** агент может выполнять `browser_snapshot`, `browser_click`, `browser_take_screenshot` на живом Electron-приложении
+- **AND** взаимодействия проходят через реальный main-renderer IPC
+
+### Requirement: Агент-driven верификация — полный режим
+
+Система ДОЛЖНА поддерживать полный режим агентской UI-верификации: `pnpm test:agent:electron` запускает собранное Electron-приложение (`out/main/index.mjs`) с `--remote-debugging-port=9222` и изолированным userData (сид-данные: recent-projects, проект, чат с историей). Агент через Playwright MCP (единственный сервер `playwright` с `--cdp-endpoint http://127.0.0.1:9222`) подключается к живому приложению и проверяет UI с реальной main-renderer интеграцией. Режим предназначен для финальной верификации ui-reviewer'ом.
+
+#### Scenario: ui-reviewer проверяет prod-сборку через CDP
+
+- **GIVEN** ui-reviewer имеет доступ к Playwright MCP (сервер `playwright`)
+- **WHEN** ui-reviewer выполняет `pnpm test:agent:electron`
+- **AND** MCP подключён через `--cdp-endpoint http://127.0.0.1:9222`
+- **THEN** ui-reviewer может проверять UI production-сборки Electron-приложения
+- **AND** проверка покрывает реальную интеграцию main-renderer, включая IPC
+
+#### Scenario: Изолированный userData защищает реальные данные
+
+- **GIVEN** на машине есть реальные проекты и API-ключи в production userData
+- **WHEN** выполняется `pnpm test:agent:electron`
+- **THEN** Electron использует изолированный userData-каталог с сид-данными
+- **AND** реальные проекты и ключи НЕ видны агенту и НЕ попадают в скриншоты
+
+#### Scenario: CDP-порт занят
+
+- **GIVEN** порт 9222 уже занят другим процессом
+- **WHEN** выполняется `pnpm test:agent:electron`
+- **THEN** команда завершается с ошибкой и понятным сообщением о занятом порте
+
+### Requirement: Playwright MCP в opencode.json
+
+Система ДОЛЖНА иметь ОДИН Playwright MCP-сервер `playwright` в `opencode.json` с командой `npx -y @playwright/mcp@latest --cdp-endpoint http://127.0.0.1:9222`. Сервер ДОЛЖЕН быть доступен app-tester и ui-reviewer без ручного запуска. Система НЕ ДОЛЖНА иметь второй MCP-сервер или автономный Chromium-режим — все агентские проверки идут через CDP к Electron.
+
+#### Scenario: Единственный MCP-сервер доступен агенту
+
+- **WHEN** агент, имеющий доступ к MCP-инструментам, начинает проверку UI
+- **THEN** все инструменты доступны с префиксом `playwright_*`
+- **AND** агент не выбирает между серверами и не переключает префиксы
+
+#### Scenario: Нет второго MCP-сервера
+
+- **GIVEN** opencode.json содержит только `mcp.playwright`
+- **WHEN** агент пытается использовать инструменты с префиксом `playwright-cdp_*`
+- **THEN** таких инструментов не существует
+
+### Requirement: Evidence-based verification gate
+
+Оркестратор ДОЛЖЕН блокировать approve при красном deterministic check,
+доказанном blocker/major reviewer, FAIL app-tester или critical/major FAIL
+ui-reviewer. Minor/advisory замечание без нарушения спеки НЕ ДОЛЖНО
+автоматически блокировать approve.
+
+#### Scenario: Все обязательные проверки зелёные
+
+- **GIVEN** deterministic checks зелёные, reviewer APPROVE и app-tester PASS
+- **AND** ui-reviewer PASS при renderer/both
+- **WHEN** оркестратор собирает evidence
+- **THEN** change может быть предложен пользователю к approve
+
+#### Scenario: Спорная reviewer-находка
+
+- **GIVEN** implementer ответил DISPUTE с evidence
+- **WHEN** оркестратор рассматривает finding
+- **THEN** он выполняет meta-review
+- **AND** архитектурный спор возвращает архитектору
+
+### Requirement: Цикл generator/evaluator с лимитом итераций
+
+Полный цикл «implementer/ui-designer вносит изменения → deterministic
+checks → reviewer/app-tester/ui-reviewer → исправление» ДОЛЖЕН быть
+ограничен тремя итерациями. После третьего FAIL система ДОЛЖНА
+эскалировать проблему к человеку с evidence всех итераций.
+
+#### Scenario: Эскалация после трёх FAIL
+
+- **GIVEN** implementer получил FAIL от любого агента конвейера три раза подряд
+- **WHEN** implementer завершает третью попытку исправления
+- **THEN** оркестратор НЕ запускает четвёртую итерацию
+- **AND** оркестратор сообщает пользователю о проблеме с контекстом всех трёх проверок
+
+### Requirement: Контракт implementer'а о затрагиваемых слоях
+
+Implementer ПОСЛЕ завершения реализации ДОЛЖЕН выполнить `pnpm typecheck &&
+pnpm lint && pnpm build`, релевантные tests из tasks.md, проанализировать
+дифф и сообщить `Change touches: renderer|main|both` и
+`Contours: ui|core|data|agentic`. Оркестратор использует это для вызова
+app-tester и, при renderer/both, ui-reviewer.
+
+#### Scenario: Implementer сообщает renderer с минимальными проверками
+
+- **GIVEN** implementer изменил код в `src/renderer/`
+- **WHEN** implementer завершает реализацию и отправляет отчёт оркестратору
+- **THEN** отчёт содержит строку `Change touches: renderer`
+- **AND** выполнены обязательные deterministic checks из tasks.md
+- **AND** оркестратор фиксирует необходимость app-tester и ui-reviewer
+
+#### Scenario: Implementer сообщает main — ui-reviewer не нужен
+
+- **GIVEN** implementer изменил код только в `src/main/`
+- **WHEN** implementer завершает реализацию
+- **THEN** отчёт содержит строку `Change touches: main`
+- **AND** оркестратор запускает reviewer и app-tester, но НЕ ui-reviewer
+
+### Requirement: Документация UI-верификации в AGENTS.md
+
+Система ДОЛЖНА содержать в `AGENTS.md` секцию «App и UI verification»:
+deterministic checks, reviewer, app-tester и ui-reviewer; быстрый и полный
+Electron CDP modes; запрет автообновления baseline; лимит 3 итераций;
+normal/empty/loading/error; размеры окна и невидимые окна.
+
+#### Scenario: Агент следует конвейеру из AGENTS.md
+
+- **WHEN** implementer, reviewer, app-tester, ui-reviewer или оркестратор выполняет свою роль
+- **THEN** агент находит секцию «UI verification» в AGENTS.md
+- **AND** следует инструкциям для своей роли и стадии конвейера
 
 ### Requirement: Трёхслойная тестовая инфраструктура
 
@@ -80,7 +279,7 @@ Vitest ДОЛЖЕН использовать workspace (`vitest.workspace.ts`) �
 - **THEN** перед тестами выполняется `pnpm build`
 - **AND** тесты запускаются на свежей production-сборке
 - **WHEN** выполняется `pnpm test:e2e:quick`
-- **THEN** тесты запускаются на текущей dev-сборке electron-vite без пересборки
+- **THEN** main и preload собираются свежими (`electron-vite build`), а renderer берётся из живого dev-server без пересборки renderer'а
 
 ### Requirement: Визуальные регрессии с ручным baseline
 
@@ -126,49 +325,9 @@ Playwright E2E-тесты ДОЛЖНЫ мокать нативные Electron-д
 - **THEN** диалог замокан через `electronApp.evaluate()` и возвращает предопределённый путь
 - **AND** сценарий теста выполняется детерминированно без системного диалога
 
-### Requirement: Агент-driven верификация — быстрый режим
-
-Система ДОЛЖНА поддерживать быстрый режим агентской UI-верификации: `pnpm dev:renderer` запускает renderer на localhost, агент через Playwright MCP подключается к странице и проверяет UI. Режим предназначен для итеративной самопроверки implementer'а и НЕ проверяет main-процесс или IPC-интеграцию.
-
-#### Scenario: Агент проверяет renderer через dev-server
-
-- **GIVEN** агент (implementer) имеет доступ к Playwright MCP
-- **WHEN** агент выполняет `pnpm dev:renderer`
-- **AND** через MCP переходит на `http://localhost:5173`
-- **THEN** агент может выполнять `browser_snapshot`, `browser_click`, `browser_screenshot` на renderer
-- **AND** взаимодействия ограничены renderer-процессом
-
-### Requirement: Агент-driven верификация — полный режим
-
-Система ДОЛЖНА поддерживать полный режим агентской UI-верификации: `pnpm test:agent:electron` запускает собранное Electron-приложение с `--remote-debugging-port=9222`, агент через Playwright MCP с `--cdp-endpoint http://127.0.0.1:9222` подключается к живому приложению и проверяет UI с реальной main-renderer интеграцией. Режим предназначен для финальной верификации ui-reviewer'ом.
-
-#### Scenario: Агент проверяет живой Electron через CDP
-
-- **GIVEN** ui-reviewer имеет доступ к Playwright MCP
-- **WHEN** ui-reviewer выполняет `pnpm test:agent:electron`
-- **AND** подключает MCP через `--cdp-endpoint http://127.0.0.1:9222`
-- **THEN** ui-reviewer может проверять UI живого Electron-приложения
-- **AND** проверка покрывает реальную интеграцию main-renderer, включая IPC
-
-#### Scenario: CDP-порт занят
-
-- **GIVEN** порт 9222 уже занят другим процессом
-- **WHEN** выполняется `pnpm test:agent:electron`
-- **THEN** команда завершается с ошибкой и понятным сообщением о занятом порте
-
-### Requirement: Playwright MCP в opencode.json
-
-Система ДОЛЖНА иметь Playwright MCP-сервер зарегистрированным в `opencode.json` в секции `mcp.playwright` как локальный сервер (`type: "local"`, команда `npx -y @playwright/mcp@latest`). MCP-сервер ДОЛЖЕН быть доступен всем агентам (ui-reviewer, implementer, reviewer) без ручного запуска.
-
-#### Scenario: MCP доступен агенту
-
-- **WHEN** агент, имеющий доступ к MCP-инструментам, начинает проверку UI
-- **THEN** инструменты `browser_snapshot`, `browser_screenshot`, `browser_click`, `browser_evaluate` доступны
-- **AND** агент не выполняет ручную установку или запуск MCP-сервера
-
 ### Requirement: ui-reviewer субагент
 
-Система ДОЛЖНА иметь агента `ui-reviewer` (`.opencode/agents/ui-reviewer.md`) — субагент, специализирующийся на UI-верификации. Агент ДОЛЖЕН иметь `permission.edit: deny` (не может менять код), `permission.bash: allow` (запуск dev-сервера, Electron, проверок). Агент ДОЛЖЕН возвращать PASS или FAIL с evidence (скриншоты, логи, accessibility-дерево, описание нарушений) и руководствоваться критериями из `docs/ui-review.md`.
+Система ДОЛЖНА иметь агента `ui-reviewer` (`.opencode/agents/ui-reviewer.md`) — субагент, специализирующийся на UI-верификации. Агент ДОЛЖЕН использовать модель `kimi-for-coding/k3`, иметь `permission.edit: deny` (не может менять код), `permission.bash: allow` (запуск Electron, проверок). Агент ДОЛЖЕН возвращать PASS или FAIL с evidence (скриншоты, логи, accessibility-дерево, описание нарушений) и руководствоваться критериями из `docs/ui-review.md`.
 
 #### Scenario: ui-reviewer возвращает PASS
 
@@ -183,46 +342,6 @@ Playwright E2E-тесты ДОЛЖНЫ мокать нативные Electron-д
 - **WHEN** агент завершает проверку
 - **THEN** возвращается вердикт FAIL с описанием нарушения (severity, affected screen, evidence, expected behavior)
 - **AND** файлы приложения не изменены
-
-### Requirement: FAIL от ui-reviewer — hard gate
-
-Вердикт FAIL от ui-reviewer ДОЛЖЕН блокировать approve change без исключений: оркестратор НЕ ДОЛЖЕН переводить change в `Status: approved` или `Status: done`, пока ui-reviewer не вернёт PASS.
-
-#### Scenario: FAIL блокирует approve
-
-- **GIVEN** change находится на стадии реализации, implementer завершил код
-- **WHEN** reviewer запрашивает UI-проверку и ui-reviewer возвращает FAIL
-- **THEN** оркестратор отклоняет approve
-- **AND** change возвращается implementer'у на доработку
-
-### Requirement: Цикл generator/evaluator с лимитом итераций
-
-Цикл «implementer вносит изменения → ui-reviewer проверяет» ДОЛЖЕН быть ограничен тремя итерациями. После третьего FAIL от ui-reviewer система ДОЛЖНА эскалировать проблему к человеку (оркестратор сообщает пользователю о серийных FAIL с контекстом всех трёх итераций).
-
-#### Scenario: Эскалация после трёх FAIL
-
-- **GIVEN** implementer получил FAIL от ui-reviewer три раза подряд
-- **WHEN** implementer завершает третью попытку исправления
-- **THEN** оркестратор НЕ запускает четвёртую итерацию
-- **AND** оркестратор сообщает пользователю о проблеме с контекстом всех трёх проверок
-
-### Requirement: Контракт implementer'а о затрагиваемых слоях
-
-Implementer ПОСЛЕ завершения реализации ДОЛЖЕН сообщать оркестратору строку `Change touches: renderer` (или `main`, `both`) на основе анализа своего диффа. Оркестратор ДОЛЖЕН использовать эту строку для определения необходимости UI-верификации: при `renderer` или `both` — требовать UI-проверку от reviewer'а / ui-reviewer'а.
-
-#### Scenario: Implementer сообщает renderer
-
-- **GIVEN** implementer изменил код в `src/renderer/`
-- **WHEN** implementer завершает реализацию и отправляет отчёт оркестратору
-- **THEN** отчёт содержит строку `Change touches: renderer`
-- **AND** оркестратор фиксирует необходимость UI-верификации
-
-#### Scenario: Implementer сообщает main
-
-- **GIVEN** implementer изменил код только в `src/main/`
-- **WHEN** implementer завершает реализацию
-- **THEN** отчёт содержит строку `Change touches: main`
-- **AND** оркестратор НЕ требует UI-верификацию
 
 ### Requirement: Запрет автообновления visual baseline
 
@@ -244,16 +363,6 @@ Implementer ПОСЛЕ завершения реализации ДОЛЖЕН с
 - **WHEN** ui-reviewer оценивает UI
 - **THEN** каждый вердикт FAIL сопровождается ссылкой на конкретный критерий из `docs/ui-review.md`
 - **AND** evidence (скриншот) демонстрирует нарушение критерия
-
-### Requirement: Документация UI-верификации в AGENTS.md
-
-Система ДОЛЖНА содержать в `AGENTS.md` секцию «UI verification» с пошаговыми инструкциями для агентов: быстрый режим (dev-server + MCP) для implementer'а, полный режим (live Electron + CDP + MCP) для ui-reviewer'а, запрет автообновления baseline, лимит 3 итераций generator/evaluator, требование проверять normal/empty/loading/error-состояния, несколько размеров окна (1280x800, 1600x900).
-
-#### Scenario: Агент следует инструкциям из AGENTS.md
-
-- **WHEN** любой агент (implementer, reviewer, ui-reviewer) выполняет UI-верификацию
-- **THEN** агент находит секцию «UI verification» в AGENTS.md
-- **AND** следует пошаговым инструкциям для своего режима
 
 ### Requirement: Ужесточение протокола идеатора
 

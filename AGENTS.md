@@ -21,7 +21,7 @@
 - `pnpm test:e2e:quick` — Playwright E2E на dev-сборке (main/preload собраны, renderer — dev-server)
 - `pnpm test:visual` — visual regression против baseline
 - `pnpm test:agent:electron` — приложение с CDP :9222 для агентской проверки
-- `pnpm test:agent:dev` — инструкция быстрого режима (dev-server + MCP)
+- `pnpm test:agent:dev` — Electron dev с CDP :9222 для быстрой проверки
 
 После любого изменения кода `pnpm typecheck` и `pnpm lint` обязаны проходить.
 
@@ -54,8 +54,9 @@ docs/           # документация системы агентов (LESSON
 
 ## Hard rules (и почему)
 
-- **Спека до кода — только для `src/`.** Фича приложения начинается с
-  `/kotik-feature`, код — только после `Status: approved`. Переделка спеки
+- **Спека до кода — только для `src/`.** Используй профиль
+  `/kotik-small-change`, `/kotik-bugfix` или `/kotik-feature`; код — только
+  после `Status: approved`. Переделка спеки
   стоит минуты, переделка кода — часы. Изменения самой системы агентов
   (`.opencode/`, AGENTS.md, docs/) SDD-спеки не требуют — они меняются
   напрямую, по согласованному с пользователем плану.
@@ -71,19 +72,32 @@ docs/           # документация системы агентов (LESSON
 
 | Агент | Роль |
 |---|---|
-| orchestrator | диалог, требования, SDD-цикл, делегирование |
-| ideator | vision-интервью → vision.md |
-| spec-writer | оформление спек по vision.md в `specs/changes/` |
-| researcher | веб-исследования → `research/` |
-| implementer | код по tasks.md |
-| reviewer | проверка кода против спек, вердикт |
-| ui-reviewer | проверка живого UI через Playwright MCP, PASS/FAIL (deny:edit) |
+| orchestrator | K3: диалог, выбор профиля, SDD, консилиум, делегирование |
+| ideator-fast / ideator-deep | Flash/Pro: vision малой или сложной фичи |
+| solution-architect | Pro: владелец design.md |
+| architecture-reviewer | Sol/high: независимая критика design |
+| implementation-planner / test-strategist / security-reviewer | специализированные участники консилиума |
+| spec-writer-fast / spec-writer-deep | Flash/Pro: проверяемые proposal/deltas/tasks |
+| diagnostician | Flash: root-cause bugfix |
+| implementer | Flash: код зрелого проекта по tasks.md |
+| technical-consultant | K3: редкая read-only помощь implementer'у |
+| reviewer | всегда GPT-5.6 Sol/medium: code/spec verdict |
+| test-author | Flash: пишет automated regression/E2E tests |
+| app-tester | Flash: black-box кликает live app через Playwright/CDP |
+| ui-designer / ui-reviewer | K3: visual polish / независимый visual verdict |
+| logic-reviewer | Sol/high: formal logic и inference semantics |
+| founding-architect / bootstrap-implementer | K3 только для подтверждённого greenfield/bootstrap |
+| researcher | Pro: формулировка вопросов и синтез; по умолчанию ответ в чат |
 | reflector | ретроспектива сессий → prevention-правила |
 | web-explore | листовой веб-воркер researcher'а (факты по подвопросу) |
 
-Команды: `/kotik-feature` (новая фича), `/kotik-approve` (принять стадию),
-`/kotik-research` (исследование), `/kotik-reflect` (разбор сессий: текущая +
-дочерние, либо `--days N`). Команды — явные триггеры одноимённых
+Каждый субагент явно задаёт `model` (и `variant`, когда применимо) в своём
+`.opencode/agents/*.md`; иначе он унаследует K3 оркестратора. Встроенный
+explore — единственное исключение, его Flash-модель закреплена в
+opencode.json.
+
+Команды: `/kotik-small-change`, `/kotik-bugfix`, `/kotik-feature`,
+`/kotik-approve`, `/kotik-research`, `/kotik-reflect`. Команды — явные триггеры одноимённых
 скиллов из `.opencode/skills/`; скиллы активируются и неявно, по смыслу
 запроса (кроме approve-переходов — они всегда требуют подтверждения).
 
@@ -93,52 +107,49 @@ docs/           # документация системы агентов (LESSON
 
 Конвенции спек: [specs/README.md](specs/README.md).
 
-## UI verification
+## App и UI verification
 
 Корректные данные не гарантируют корректный рендер (LRN-20260729-001).
-Каждый change, затрагивающий renderer, проходит проверку живого UI перед
-approve. Два режима агентской верификации (Playwright MCP зарегистрирован
-в opencode.json, ручной запуск не нужен):
+Изменённый пользовательский flow проходит black-box проверку app-tester.
+Каждый change, затрагивающий renderer, дополнительно проходит независимое
+visual review. Playwright MCP зарегистрирован в opencode.json:
 
-- **Быстрый (implementer, итерации):** `pnpm test:agent:dev` выводит
-  инструкцию — `pnpm dev:renderer`, затем инструменты MCP-сервера
-  `playwright` (browser_navigate http://localhost:5173). Renderer-only:
-  main/IPC не проверяется.
-- **Полный (ui-reviewer, финальная):** `pnpm test:agent:electron` (живой
+- **Быстрый:** `pnpm test:agent:dev` запускает Electron dev с CDP :9222.
+- **Полный:** `pnpm test:agent:electron` запускает живой
   Electron с CDP :9222, изолированный userData с сид-данными — реальные
-  проекты и API-ключи агенту недоступны) + инструменты MCP-сервера
-  `playwright-cdp` (уже настроен с --cdp-endpoint :9222). Реальная
-  main-renderer интеграция.
+  проекты и API-ключи агенту недоступны. Оба используют MCP `playwright`
+  с `--cdp-endpoint :9222`.
 
 Контракт implementer'а: в отчёте оркестратору implementer обязан указать
-строку `Change touches: renderer` (или `main`, `both`) по анализу своего
-диффа. При `renderer`/`both` UI-верификация обязательна.
+строки `Change touches: renderer|main|both` и
+`Contours: ui|core|data|agentic` по анализу своего диффа. При
+`renderer`/`both` UI-верификация обязательна.
 
 После изменения renderer UI:
 
-1. Implementer: `pnpm test:unit && pnpm test:e2e:quick`, затем
-   `pnpm test:agent:dev` + MCP для быстрой визуальной проверки.
-2. Reviewer: запросить ui-reviewer (через оркестратора) для полной
-   верификации.
-3. Проверять затронутый user flow, не только начальную страницу.
-4. Проверять UI при 1280x800 и 1600x900 (когда релевантно).
-5. Проверять normal, empty, loading и error-состояния.
-6. Захватывать скриншоты каждого затронутого состояния.
-7. Сверять скриншоты с критериями [docs/ui-review.md](docs/ui-review.md).
-8. Не объявлять задачу завершённой при наличии high-severity UI-проблем.
-9. Никогда не обновлять visual baseline только ради прохождения теста —
+1. Implementer выполняет deterministic checks из tasks.md.
+2. App-tester проходит затронутый flow и проверяет поведение.
+3. Ui-reviewer независимо оценивает визуальный результат. При новой visual
+   grammar перед ним может работать ui-designer.
+4. Проверять затронутый user flow, не только начальную страницу.
+5. Проверять UI при 1280x800 и 1600x900 (когда релевантно).
+6. Проверять normal, empty, loading и error-состояния.
+7. Захватывать скриншоты каждого затронутого состояния.
+8. Сверять скриншоты с критериями [docs/ui-review.md](docs/ui-review.md).
+9. Не объявлять задачу завершённой при наличии high-severity UI-проблем.
+10. Никогда не обновлять visual baseline только ради прохождения теста —
    baseline обновляется только вручную (`--update-snapshots`), агенту
    запрещено (см. docs/ui-review.md).
-10. FAIL ui-reviewer = hard gate для approve: оркестратор не переводит
-    change в approved/done, пока ui-reviewer не вернёт PASS.
-11. Generator/evaluator цикл (implementer чинит → ui-reviewer проверяет):
+11. Critical/major FAIL ui-reviewer = hard gate. Minor/advisory замечания
+    фиксируются, но не блокируют approve автоматически.
+12. Generator/evaluator цикл (implementer/ui-designer чинит → независимые
+    app-tester/ui-reviewer проверяют):
     максимум 3 итерации; после 3-го FAIL оркестратор эскалирует к человеку
     с контекстом всех трёх проверок.
 
 ## Полнота vision.md (протокол идеатора)
 
-vision.md обязан покрывать ВСЕ измерения карты: Цель и границы, Техническая
-реализация, UI/UX, Риски и опасения, Компромиссы, Крайние случаи и failure
-modes, Критерии приёмки, Открытые вопросы. Оркестратор проверяет наличие
-всех секций перед передачей vision.md spec-writer'у; при неполной карте —
-возврат идеатору с указанием пропущенного измерения.
+vision.md обязан покрывать: цель и границы; контуры `ui/core/data/agentic`;
+пользовательские и вложенные workflow; UI/UX; данные/provenance; агентное
+поведение и human approvals; риски и компромиссы; failure modes; критерии
+приёмки; открытые вопросы. Оркестратор проверяет карту до архитектуры/spec.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Kotik Bugfix"
+  short_description: "Диагностика и исправление дефекта через bugfix-профиль"
+  default_prompt: "Примени профиль kotik-bugfix к текущему дефекту."

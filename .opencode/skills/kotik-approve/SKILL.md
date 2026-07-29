@@ -23,7 +23,7 @@ Approve активируется неявно, а переходы необра�
 
 1. Артефакты на месте: proposal.md, дельты в deltas/, decisions.md, tasks.md.
 2. У каждого требования в дельтах есть хотя бы один сценарий
-   (`#### Scenario:`). Нет → вернуть spec-writer'у на доработку.
+   (`#### Scenario:`). Нет → вернуть тому же spec-writer-fast/deep.
 3. Секция «Открытые вопросы» в proposal пуста или удалена. Нет → показать
    вопросы пользователю и уточнить, закрыты ли.
 4. `pnpm typecheck` зелёный — implementer не должен начинать на сломанной
@@ -32,23 +32,29 @@ Approve активируется неявно, а переходы необра�
 ### Переход
 
 1. Сменить Status на `approved`.
-2. Делегировать implementer реализацию (бриф: путь к change, группы задач,
-   контекст из design.md и decisions.md). Зафиксировать task_id его сессии
-   строкой в decisions.md change.
-3. Когда implementer закончит — делегировать reviewer проверку (task_id
-   тоже фиксировать в decisions.md).
-4. CHANGES_REQUESTED → находки implementer'у на доработку (тот же
-   implementer: task_id из decisions.md), затем снова reviewer (тот же
-   reviewer, его task_id). До APPROVE, максимум 3 цикла, дальше — эскалация
-   пользователю. Финальное приёмочное ревью после 2+ циклов доработки —
-   свежий reviewer без task_id (защита от anchor bias). Каждый
-   CHANGES_REQUESTED — сигнал рефлексии, запомнить.
-5. После APPROVE — зафиксировать вердикт на диске: строка
+2. Создать `agent-sessions.md` change и фиксировать там роль → task_id.
+3. Делегировать Flash implementer реализацию. K3 bootstrap-implementer
+   допустим только при записанном подтверждении greenfield/bootstrap.
+4. При необходимости делегировать test-author написание недостающих
+   automated tests. Фиксированные pnpm-команды выполняются напрямую по
+   tasks.md; LLM test-runner не создавать.
+5. Делегировать reviewer (`GPT-5.6 Sol / medium`), затем app-tester для
+   изменённого user flow. При renderer/both после функциональной проверки
+   делегировать ui-reviewer; при новой visual grammar до него может
+   работать ui-designer.
+6. Для formal-logic/inference changes дополнительно вызвать logic-reviewer.
+7. На blocker/major reviewer implementer отвечает
+   `ACCEPT | DISPUTE | PRE_EXISTING` с evidence. ACCEPT → тот же implementer
+   исправляет; DISPUTE → оркестратор adjudicates, архитектурный спор
+   возвращает архитектору. Minor/advisory не блокируют автоматически.
+8. Повторять необходимые проверки максимум 3 цикла, затем эскалировать
+   пользователю. После 2+ циклов финальный reviewer запускается свежим.
+9. После APPROVE — зафиксировать вердикт на диске: строка
    `Review: APPROVE YYYY-MM-DD` в proposal.md (заменив прошлую строку
    Review, если была; CHANGES_REQUESTED фиксировать аналогично). Вердикт
    в чате не переживает сессию — на диске переживает.
-6. Доложить: что реализовано, вердикт reviewer, список «что проверить
-   руками». Сказать явно: «проверьте и примите через /kotik-approve или
+10. Доложить: что реализовано, вердикты reviewer/app-tester/ui-reviewer и
+   список «что проверить руками». Сказать явно: «проверьте и примите через /kotik-approve или
    напишите, что доделать».
 
 ## Стадия approved → done (приёмка и архивация)

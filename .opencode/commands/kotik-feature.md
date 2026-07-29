@@ -1,5 +1,5 @@
 ---
-description: Начать новую фичу через SDD-цикл — vision-интервью и спека в specs/changes/
+description: Начать small/normal/large feature через vision, architecture/consilium и SDD
 agent: orchestrator
 ---
 

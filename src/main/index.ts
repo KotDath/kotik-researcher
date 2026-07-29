@@ -10,6 +10,11 @@ import { IpcChannels, type ChatEvent, type CurrentProject } from '../shared/ipc'
 
 let mainWindow: BrowserWindow | null = null
 
+// Тестовые и агентские прогоны (--e2e): окно не показывается и не крадёт фокус,
+// но renderer продолжает отрисовку (backgroundThrottling: false) — скриншоты
+// CDP Page.captureScreenshot берутся из композитора независимо от видимости.
+const isE2E = process.argv.includes('--e2e')
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -18,12 +23,13 @@ function createWindow(): void {
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.js'),
-      sandbox: false
+      sandbox: false,
+      backgroundThrottling: !isE2E
     }
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow?.show()
+    if (!isE2E) mainWindow?.show()
   })
 
   mainWindow.on('closed', () => {

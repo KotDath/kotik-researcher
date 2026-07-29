@@ -19,6 +19,7 @@ specs/
     proposal.md                   # зачем и что меняем + Status
     design.md                     # как (опционально — для рискованных/кросс-резовых)
     decisions.md                  # дата · контекст · выбор · почему (включая отвергнутое)
+    agent-sessions.md             # роль → task_id для resume в рамках change
     tasks.md                      # чек-лист реализации
     deltas/<capability>.md        # дельта-спеки: только то, что меняется
   changes/archive/YYYY-MM-DD-<name>/   # завершённые изменения (история)
@@ -26,8 +27,9 @@ specs/
 
 ## Жизненный цикл change
 
-1. **draft** — создан через `/kotik-feature`: vision.md (интервью идеатора)
-   → proposal + deltas + tasks.
+1. **draft** — создан через `/kotik-small-change`, `/kotik-bugfix` или
+   `/kotik-feature`. Feature использует vision.md; normal/large/risky
+   feature также design.md архитектора.
    В `proposal.md` первая строка: `Status: draft`.
 2. **approved** — пользователь принял спеку (`/kotik-approve`).
    Status меняется на `approved`. Начинается реализация по `tasks.md`.
@@ -40,6 +42,19 @@ specs/
    Status меняется на `done`.
 
 ## Формат спеки
+
+proposal.md содержит routing card:
+
+```text
+Profile: small-change | bugfix | feature
+Size: small | normal | large
+Contours: ui | core | data | agentic
+Risk: low | medium | high
+```
+
+Размер не отменяет semantic risk: migrations/data identity/provenance,
+embeddings/reindexing, nested agent workflow, permissions, formal logic и
+breaking IPC/API требуют deep specification.
 
 ### Требование
 
@@ -104,6 +119,16 @@ Implementer отмечает выполненные задачи `- [x]` сра�
 дата · контекст · выбор · почему. Отвергнутые варианты записываются тоже —
 через полгода «почему НЕ так» ценнее, чем «почему так». При архивации файл
 уезжает в archive вместе с change.
+
+## design.md и agent-sessions.md
+
+design.md создаёт solution-architect, не spec-writer. Он обязателен для
+normal/large и semantic-medium/high изменений. Spec-writer превращает
+vision/design в проверяемые обязательства и задачи.
+
+agent-sessions.md хранит `роль → task_id → назначение/статус`. Возобновляй
+сессию только внутри того же change и той же роли; для независимого
+финального review после нескольких циклов создавай свежую.
 
 ## Правки draft (revisions)
 

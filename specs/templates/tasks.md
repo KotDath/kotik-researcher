@@ -7,6 +7,9 @@
 
 ## 2. Проверка
 
-- [ ] 2.1 `pnpm typecheck` и `pnpm lint` проходят
-- [ ] 2.2 Smoke: `pnpm build` собирается, собранный артефакт запускается
-- [ ] 2.3 <проверка поведения по сценариям из дельта-спек>
+- [ ] 2.1 [implementer] `pnpm typecheck` и `pnpm lint` проходят
+- [ ] 2.2 [implementer] Smoke: `pnpm build` собирается, артефакт запускается
+- [ ] 2.3 [implementer/test-author] Релевантные automated tests проходят
+- [ ] 2.4 [reviewer] Code/spec review: APPROVE
+- [ ] 2.5 [app-tester] Изменённый пользовательский flow: PASS
+- [ ] 2.6 [ui-reviewer, если renderer/both] Visual review: PASS
