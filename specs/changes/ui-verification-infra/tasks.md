@@ -68,9 +68,9 @@
 
 ## 8. ui-reviewer субагент
 
-- [ ] 8.1 Создать `.opencode/agents/ui-reviewer.md` с frontmatter: `description: Reviews UI through Playwright without editing code`, `mode: subagent`, `permission.edit: deny`, `permission.bash: allow`
-- [ ] 8.2 Тело агента: инструкция открыть приложение через Playwright (полный режим для финальной верификации), выполнить указанный пользовательский сценарий, проверить состояния (normal/empty/loading/error), захватить скриншоты, оценить по критериям `docs/ui-review.md`, вернуть PASS/FAIL с evidence
-- [ ] 8.3 В теле агента явно запретить: редактирование кода, обновление baseline (`--update-snapshots`), предположение что фича работает потому что страница загрузилась
+- [x] 8.1 Создать `.opencode/agents/ui-reviewer.md` с frontmatter: `description: Reviews UI through Playwright without editing code`, `mode: subagent`, `permission.edit: deny`, `permission.bash: allow`
+- [x] 8.2 Тело агента: инструкция открыть приложение через Playwright (полный режим для финальной верификации), выполнить указанный пользовательский сценарий, проверить состояния (normal/empty/loading/error), захватить скриншоты, оценить по критериям `docs/ui-review.md`, вернуть PASS/FAIL с evidence
+- [x] 8.3 В теле агента явно запретить: редактирование кода, обновление baseline (`--update-snapshots`), предположение что фича работает потому что страница загрузилась
 
 ## 9. Документация
 
