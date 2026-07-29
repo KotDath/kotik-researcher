@@ -124,6 +124,7 @@ function Sidebar({
               <input
                 autoFocus
                 className="input"
+                data-testid="chat-rename-input"
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
                 onBlur={() => void commitRename(chat.file)}
@@ -137,6 +138,7 @@ function Sidebar({
                 <button
                   className="chat-list-main"
                   data-testid="chat-item-select"
+                  aria-current={chat.file === activeChat ? 'true' : undefined}
                   onClick={() => void select(chat.file)}
                 >
                   <span className="chat-list-name">
@@ -150,6 +152,7 @@ function Sidebar({
                 <span className="chat-list-actions">
                   <button
                     className="btn btn-ghost btn-sm"
+                    data-testid="chat-item-rename"
                     title="Переименовать"
                     onClick={() => {
                       setRenaming(chat.file)
@@ -160,6 +163,7 @@ function Sidebar({
                   </button>
                   <button
                     className="btn btn-ghost btn-sm"
+                    data-testid="chat-item-delete"
                     title="Удалить (в корзину)"
                     onClick={() => void remove(chat)}
                   >

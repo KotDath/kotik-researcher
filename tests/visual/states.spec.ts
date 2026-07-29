@@ -1,56 +1,43 @@
 import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { chromium, expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { launchApp, stabilizeWindow } from '../e2e/fixtures/electron.fixture'
 import { makeTempDir, mockOpenDialog, openProjectViaDialog } from '../e2e/helpers'
 
-// Мок-renderer для состояний, недетерминированных в реальном main
-// (playwright.config.ts поднимает его на :5199 как webServer). Это renderer-only
-// сценарии — гоняем их в обычном Chromium: preload в Electron экспонирует
-// read-only window.api, мок его не подменит.
-const MOCK_URL = 'http://localhost:5199'
-
+// Все visual-тесты — внутри Electron через общий fixture (_electron.launch +
+// стабилизация), включая мок-состояния: preload подменяет window.api по env
+// E2E_MOCK_API (src/preload/index.ts), поэтому read-only contextBridge-мост
+// не мешает.
 const SHOT = {
   maxDiffPixelRatio: 0.001,
   animations: 'disabled',
   caret: 'hide'
 } as const
 
-async function withRealApp(
+type MockMode = 'loading' | 'demo' | 'error'
+
+async function withApp(
+  extraEnv: Record<string, string>,
   run: (window: Page, electronApp: ElectronApplication) => Promise<void>
 ): Promise<void> {
   const userDataDir = mkdtempSync(join(tmpdir(), 'kotik-visual-'))
-  const { electronApp } = await launchApp(userDataDir)
+  const { electronApp } = await launchApp(userDataDir, extraEnv)
   try {
     const window = await electronApp.firstWindow()
     await stabilizeWindow(window)
     await run(window, electronApp)
   } finally {
-    await electronApp.close()
+    await electronApp.close().catch(() => {})
     rmSync(userDataDir, { recursive: true, force: true })
   }
 }
 
-async function withMockApp(mode: 'loading' | 'demo' | 'error', run: (window: Page) => Promise<void>): Promise<void> {
-  const browser = await chromium.launch()
-  try {
-    const window = await browser.newPage({ viewport: { width: 1280, height: 800 } })
-    await window.goto(`${MOCK_URL}/?mockApi=${mode}`)
-    await window.evaluate(async () => {
-      await document.fonts.ready
-    })
-    await window.addStyleTag({
-      content:
-        '*, *::before, *::after { animation-duration: 0s !important; ' +
-        'animation-delay: 0s !important; transition-duration: 0s !important; ' +
-        'caret-color: transparent !important; }'
-    })
-    await run(window)
-  } finally {
-    await browser.close()
-  }
-}
+const withRealApp = (run: (window: Page, electronApp: ElectronApplication) => Promise<void>) =>
+  withApp({}, run)
+
+const withMockApp = (mode: MockMode, run: (window: Page) => Promise<void>) =>
+  withApp({ E2E_MOCK_API: mode }, (window) => run(window))
 
 // Фиксированные имена проектов: mkdtemp-суффикс дал бы динамический регион
 // в заголовке сайдбара на каждом прогоне.
@@ -122,15 +109,25 @@ test('5.6 карточка ошибки в чате', async () => {
   })
 })
 
-test('5.7 пустое состояние: поиск чатов без совпадений', async () => {
+test('5.7 пустое состояние: стартовый экран без проектов', async () => {
+  // изолированный userData без recent-projects.json — настоящее состояние
+  // «нет проектов»: действия есть, истории нет
+  await withRealApp(async (window) => {
+    await expect(window.getByTestId('project-picker')).toBeVisible()
+    await expect(window.getByTestId('recent-projects-list')).toBeHidden()
+    await expect(window).toHaveScreenshot('empty-state.png', SHOT)
+  })
+})
+
+test('5.8 пустой список чатов: поиск без совпадений', async () => {
+  // «Чатов нет» через удаление недостижимо: удаление последнего активного чата
+  // в main автоматически создаёт новый (deleteChat → createChatInternal)
   await withRealApp(async (window, electronApp) => {
     await openProjectViaDialog(electronApp, window, fixedProjectDir('kotik-visual-empty-project'))
     await expect(window.getByTestId('chat-list-item')).toHaveCount(1)
-    // «Чатов нет» через удаление недостижимо: удаление последнего активного чата
-    // в main автоматически создаёт новый (deleteChat → createChatInternal)
     await window.getByTestId('chat-search-input').fill('zzz-no-match')
     await expect(window.getByTestId('chat-list-empty')).toBeVisible()
-    await expect(window).toHaveScreenshot('empty-state.png', {
+    await expect(window).toHaveScreenshot('empty-search.png', {
       ...SHOT,
       mask: [window.getByTestId('chat-list-date')]
     })

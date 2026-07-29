@@ -314,7 +314,7 @@ function SettingsView({ onClose }: Props): React.JSX.Element {
               {builtinProviders
                 .filter((p) => !configuredProviderIds.has(p.id))
                 .map((p) => (
-                  <option key={p.id} value={p.id}>
+                  <option key={p.id} value={p.id} data-testid="add-provider-option">
                     {p.name} ({p.id})
                   </option>
                 ))}

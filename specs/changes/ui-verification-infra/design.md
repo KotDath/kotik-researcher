@@ -126,11 +126,9 @@ await expect(page).toHaveScreenshot('main-window.png', {
 ```json
 {
   "mcp": {
-    "servers": {
-      "playwright": {
-        "type": "local",
-        "command": ["npx", "-y", "@playwright/mcp@latest"]
-      }
+    "playwright": {
+      "type": "local",
+      "command": ["npx", "-y", "@playwright/mcp@latest"]
     }
   }
 }

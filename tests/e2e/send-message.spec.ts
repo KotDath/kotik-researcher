@@ -1,9 +1,9 @@
 import { test, expect } from './fixtures/electron.fixture'
 import { makeTempDir, openProjectViaDialog } from './helpers'
 
-// В тестовом env API-ключи вырезаны (fixture), поэтому детерминированный исход —
-// карточка ошибки; ответ ассистента тоже валиден, если ключи всё же настроены.
-test('отправка сообщения: пузырь пользователя и ответ или карточка ошибки', async ({
+// Тестовый env — allowlist без credentials (fixture), реальный сетевой вызов
+// LLM исключён: детерминированный исход — карточка ошибки провайдера.
+test('отправка сообщения: пузырь пользователя и карточка ошибки провайдера', async ({
   electronApp,
   appWindow
 }) => {
@@ -14,8 +14,5 @@ test('отправка сообщения: пузырь пользователя
   await appWindow.getByTestId('send-button').click()
 
   await expect(appWindow.getByTestId('message-user')).toHaveText('Привет, это smoke-тест')
-  const outcome = appWindow
-    .getByTestId('message-error')
-    .or(appWindow.getByTestId('message-assistant'))
-  await expect(outcome.first()).toBeVisible({ timeout: 45_000 })
+  await expect(appWindow.getByTestId('message-error')).toBeVisible({ timeout: 45_000 })
 })

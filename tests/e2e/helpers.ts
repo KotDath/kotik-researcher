@@ -1,6 +1,7 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, utimesSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import type { ElectronApplication, Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 
@@ -14,6 +15,54 @@ export async function mockOpenDialog(electronApp: ElectronApplication, filePaths
 
 export function makeTempDir(prefix: string): string {
   return mkdtempSync(join(tmpdir(), prefix))
+}
+
+/**
+ * Сид session-файла pi SDK в изолированный userData. Без LLM сессия на диск
+ * не пишется вообще (SDK _persist требует assistant-сообщение), поэтому
+ * сценариям «несколько чатов» нужен готовый файл. Формат — pi
+ * CURRENT_SESSION_VERSION=3: header {type:'session'} + message-записи.
+ */
+export function seedChatSession(
+  userDataDir: string,
+  projectDir: string,
+  seed: { userText: string; assistantText: string; modifiedAt: number }
+): void {
+  const safePath = `--${projectDir.replace(/^[/\\]/, '').replace(/[/\\:]/g, '-')}--`
+  const dir = join(userDataDir, 'pi-agent', 'sessions', safePath)
+  mkdirSync(dir, { recursive: true })
+  const iso = new Date(seed.modifiedAt).toISOString()
+  const sessionId = randomUUID()
+  const file = join(dir, `${iso.replace(/[:.]/g, '-')}_${sessionId}.jsonl`)
+  const entries = [
+    { type: 'session', version: 3, id: sessionId, timestamp: iso, cwd: projectDir },
+    {
+      type: 'message',
+      id: 'seed0001',
+      parentId: null,
+      timestamp: iso,
+      message: {
+        role: 'user',
+        content: [{ type: 'text', text: seed.userText }],
+        timestamp: seed.modifiedAt
+      }
+    },
+    {
+      type: 'message',
+      id: 'seed0002',
+      parentId: 'seed0001',
+      timestamp: iso,
+      message: {
+        role: 'assistant',
+        content: [{ type: 'text', text: seed.assistantText }],
+        timestamp: seed.modifiedAt,
+        stopReason: 'stop'
+      }
+    }
+  ]
+  writeFileSync(file, entries.map((e) => JSON.stringify(e)).join('\n') + '\n')
+  const mtime = new Date(seed.modifiedAt)
+  utimesSync(file, mtime, mtime)
 }
 
 /**

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import { createMockApi } from './mock-api'
 import {
   IpcChannels,
   type AppSettings,
@@ -68,4 +69,6 @@ const api = {
 
 export type Api = typeof api
 
-contextBridge.exposeInMainWorld('api', api)
+// Тестовый мок (visual-состояния): E2E_MOCK_API выставляется только fixture'ом
+// в --e2e-режиме; в обычном запуске переменной нет и мост неизменен.
+contextBridge.exposeInMainWorld('api', createMockApi(process.env.E2E_MOCK_API) ?? api)

@@ -158,7 +158,7 @@ Playwright E2E-тесты ДОЛЖНЫ мокать нативные Electron-д
 
 ### Requirement: Playwright MCP в opencode.json
 
-Система ДОЛЖНА иметь Playwright MCP-сервер зарегистрированным в `opencode.json` в секции `mcp.servers.playwright` как локальный сервер (`type: "local"`, команда `npx -y @playwright/mcp@latest`). MCP-сервер ДОЛЖЕН быть доступен всем агентам (ui-reviewer, implementer, reviewer) без ручного запуска.
+Система ДОЛЖНА иметь Playwright MCP-сервер зарегистрированным в `opencode.json` в секции `mcp.playwright` как локальный сервер (`type: "local"`, команда `npx -y @playwright/mcp@latest`). MCP-сервер ДОЛЖЕН быть доступен всем агентам (ui-reviewer, implementer, reviewer) без ручного запуска.
 
 #### Scenario: MCP доступен агенту
 

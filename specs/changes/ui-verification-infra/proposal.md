@@ -1,4 +1,5 @@
 Status: approved
+Review: CHANGES_REQUESTED 2026-07-29
 
 # Proposal: ui-verification-infra
 

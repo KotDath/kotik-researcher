@@ -1,34 +1,59 @@
-import { test, expect } from './fixtures/electron.fixture'
-import { makeTempDir, openProjectViaDialog } from './helpers'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { launchApp, stabilizeWindow } from './fixtures/electron.fixture'
+import { expect, test } from '@playwright/test'
+import { makeTempDir, openProjectViaDialog, seedChatSession } from './helpers'
 
-test('навигация по чатам: создание и переключение', async ({ electronApp, appWindow }) => {
-  const projectDir = makeTempDir('kotik-e2e-chats-')
-  await openProjectViaDialog(electronApp, appWindow, projectDir)
+// Без LLM сессия на диск не пишется (SDK _persist требует assistant-сообщение),
+// а незаписанный чат исчезает из списка при переключении (disposeIfIdle).
+// Поэтому детерминированная навигация — по двум посеянным сессиям.
+test('навигация по чатам: список и переключение между двумя чатами', async () => {
+  const userDataDir = mkdtempSync(join(tmpdir(), 'kotik-e2e-chats-'))
+  const projectDir = makeTempDir('kotik-e2e-chats-project-')
+  try {
+    seedChatSession(userDataDir, projectDir, {
+      userText: 'Старый вопрос',
+      assistantText: 'Старый ответ',
+      modifiedAt: Date.now() - 3_600_000
+    })
+    seedChatSession(userDataDir, projectDir, {
+      userText: 'Новый вопрос',
+      assistantText: 'Новый ответ',
+      modifiedAt: Date.now()
+    })
 
-  // первый чат создан автоматически; пустой чат живёт только в памяти
-  // (disposeIfIdle при переключении), поэтому сначала пишем в него сообщение —
-  // сессия сохраняется на диск, и чат закрепляется в списке
-  const items = appWindow.getByTestId('chat-list-item')
-  await expect(items).toHaveCount(1)
-  await appWindow.getByTestId('chat-input').fill('первое сообщение')
-  await appWindow.getByTestId('send-button').click()
-  const outcome = appWindow
-    .getByTestId('message-error')
-    .or(appWindow.getByTestId('message-assistant'))
-  await expect(outcome.first()).toBeVisible({ timeout: 45_000 })
+    const { electronApp } = await launchApp(userDataDir)
+    try {
+      const window = await electronApp.firstWindow()
+      await stabilizeWindow(window)
+      await openProjectViaDialog(electronApp, window, projectDir)
 
-  await appWindow.getByTestId('new-chat-button').click()
-  await expect(items).toHaveCount(2)
+      // список отсортирован по активности: новее — выше; openProject делает
+      // активным первый (свежий) чат
+      const items = window.getByTestId('chat-list-item')
+      await expect(items).toHaveCount(2)
+      await expect(items.nth(0)).toContainText('Новый вопрос')
+      await expect(items.nth(1)).toContainText('Старый вопрос')
 
-  // новый чат стал активным; переключаемся на первый и обратно
-  const first = items.nth(0)
-  const second = items.nth(1)
-  await expect(first).toHaveClass(/active/)
+      // наблюдаемый контракт активности — aria-current, не внутренний CSS-класс
+      const first = items.nth(0).getByTestId('chat-item-select')
+      const second = items.nth(1).getByTestId('chat-item-select')
+      await expect(first).toHaveAttribute('aria-current', 'true')
 
-  await second.getByTestId('chat-item-select').click()
-  await expect(second).toHaveClass(/active/)
-  await expect(appWindow.getByTestId('chat-area')).toBeVisible()
+      await second.click()
+      await expect(second).toHaveAttribute('aria-current', 'true')
+      await expect(window.getByTestId('chat-area')).toBeVisible()
+      await expect(window.getByTestId('message-user')).toHaveText('Старый вопрос')
 
-  await first.getByTestId('chat-item-select').click()
-  await expect(first).toHaveClass(/active/)
+      await first.click()
+      await expect(first).toHaveAttribute('aria-current', 'true')
+      await expect(window.getByTestId('message-user')).toHaveText('Новый вопрос')
+    } finally {
+      await electronApp.close().catch(() => {})
+    }
+  } finally {
+    rmSync(userDataDir, { recursive: true, force: true })
+    rmSync(projectDir, { recursive: true, force: true })
+  }
 })

@@ -16,7 +16,7 @@
     "test": "pnpm test:unit && pnpm test:e2e && pnpm test:visual",
     "test:unit": "vitest run --passWithNoTests",
     "test:e2e": "pnpm build && playwright test --project=e2e",
-    "test:e2e:quick": "E2E_RENDERER_URL=http://localhost:5173 playwright test --project=e2e",
+    "test:e2e:quick": "electron-vite build && E2E_RENDERER_URL=http://localhost:5173 playwright test --project=e2e",
     "test:visual": "pnpm build && playwright test --project=visual",
     "test:agent:electron": "node scripts/test-agent-electron.mjs",
     "test:agent:dev": "node scripts/test-agent-dev.mjs"

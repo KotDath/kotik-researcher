@@ -10,29 +10,51 @@ import {
 
 const MAIN_ENTRY = './out/main/index.mjs'
 
-// Тестовый env без API-ключей: smoke-тест отправки сообщения обязан
-// детерминированно завершаться карточкой ошибки, а не сетевым вызовом LLM.
-function testEnv(userDataDir: string): Record<string, string> {
+// Тестовый env — allowlist, а не denylist (review-fix): denylist *_API_KEY
+// пропускал бы *_TOKEN/*_SECRET/AWS-креды к реальному SDK → сетевые вызовы.
+// Передаём только то, что нужно Electron для запуска на linux-десктопе.
+const ENV_ALLOWLIST = [
+  'PATH',
+  'HOME',
+  'USER',
+  'LOGNAME',
+  'SHELL',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'TERM',
+  'TMPDIR',
+  'DISPLAY',
+  'WAYLAND_DISPLAY',
+  'XAUTHORITY',
+  'XDG_RUNTIME_DIR',
+  'XDG_SESSION_TYPE',
+  'DBUS_SESSION_BUS_ADDRESS'
+]
+
+function testEnv(userDataDir: string, extraEnv: Record<string, string> = {}): Record<string, string> {
   const env: Record<string, string> = {}
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value === undefined || /_API_KEY$/.test(key)) continue
-    env[key] = value
+  for (const key of ENV_ALLOWLIST) {
+    const value = process.env[key]
+    if (value !== undefined) env[key] = value
   }
   env.NODE_ENV = 'test'
   env.E2E_USER_DATA_DIR = userDataDir
   if (process.env.E2E_RENDERER_URL) {
     env.ELECTRON_RENDERER_URL = process.env.E2E_RENDERER_URL
   }
-  return env
+  return { ...env, ...extraEnv }
 }
 
 /**
  * Запуск приложения с изолированным userData (main читает --e2e и
  * E2E_USER_DATA_DIR в paths.ts). Возвращает и userDataDir — сценариям
- * «перезапуск» нужно переиспользовать ту же директорию.
+ * «перезапуск» нужно переиспользовать ту же директорию. extraEnv — для
+ * visual-тестов состояний (E2E_MOCK_API, preload читает его и подменяет api).
  */
 export async function launchApp(
-  userDataDir: string = mkdtempSync(join(tmpdir(), 'kotik-e2e-'))
+  userDataDir: string = mkdtempSync(join(tmpdir(), 'kotik-e2e-')),
+  extraEnv: Record<string, string> = {}
 ): Promise<{ electronApp: ElectronApplication; userDataDir: string }> {
   if (!existsSync(MAIN_ENTRY)) {
     throw new Error(
@@ -42,7 +64,7 @@ export async function launchApp(
   }
   const electronApp = await electron.launch({
     args: [MAIN_ENTRY, '--e2e'],
-    env: testEnv(userDataDir)
+    env: testEnv(userDataDir, extraEnv)
   })
   return { electronApp, userDataDir }
 }
@@ -66,9 +88,12 @@ export const test = base.extend<{ electronApp: ElectronApplication; appWindow: P
   // eslint-disable-next-line no-empty-pattern -- Playwright требует деструктуризацию первого аргумента fixture
   electronApp: async ({}, use) => {
     const { electronApp, userDataDir } = await launchApp()
-    await use(electronApp)
-    await electronApp.close()
-    rmSync(userDataDir, { recursive: true, force: true })
+    try {
+      await use(electronApp)
+    } finally {
+      await electronApp.close().catch(() => {})
+      rmSync(userDataDir, { recursive: true, force: true })
+    }
   },
   appWindow: async ({ electronApp }, use) => {
     const window = await electronApp.firstWindow()

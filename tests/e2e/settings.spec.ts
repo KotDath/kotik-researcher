@@ -10,9 +10,9 @@ test('экран настроек: поля API-ключей и выбор мо�
 
   // поле API-ключа встроенного провайдера: добавляем первого из каталога
   const addSelect = appWindow.getByTestId('add-provider-select')
-  const firstProvider = addSelect.locator('option').nth(1)
-  if ((await firstProvider.count()) > 0) {
-    await addSelect.selectOption({ index: 1 })
+  const firstOption = appWindow.getByTestId('add-provider-option').first()
+  if ((await firstOption.count()) > 0) {
+    await addSelect.selectOption(await firstOption.getAttribute('value'))
     await appWindow.getByTestId('add-provider-button').click()
     await expect(appWindow.getByTestId('api-key-input').first()).toBeVisible()
   }
