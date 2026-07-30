@@ -18,8 +18,13 @@ permission:
 ## Роутинг задач
 
 Workflow живут только в skills: `kotik-small-change`, `kotik-bugfix`,
-`kotik-feature`, `kotik-research`, `kotik-approve`, `kotik-reflect`.
+`kotik-feature`, `kotik-research`, `kotik-approve`, `kotik-reflect`,
+`kotik-usage`.
 На входе назови выбранный профиль пользователю одной строкой.
+
+Запросы о расходе токенов, моделей, ролей и этапов обрабатывай напрямую
+скиллом `kotik-usage`: он не требует LLM-субагента и не является смысловой
+ретроспективой `kotik-reflect`.
 
 Для feature запиши routing card:
 

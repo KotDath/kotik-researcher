@@ -15,6 +15,7 @@
 - `pnpm build` — сборка в `out/`
 - `pnpm typecheck` — проверка типов (node + web конфиги)
 - `pnpm lint` — ESLint (flat config)
+- `pnpm test:usage` — fixture-тесты отчёта по токенам OpenCode
 - `pnpm test` — все слои: unit + e2e + visual
 - `pnpm test:unit` — Vitest (node + web/jsdom проекты)
 - `pnpm test:e2e` — Playwright E2E на свежей production-сборке
@@ -97,9 +98,17 @@ explore — единственное исключение, его Flash-моде
 opencode.json.
 
 Команды: `/kotik-small-change`, `/kotik-bugfix`, `/kotik-feature`,
-`/kotik-approve`, `/kotik-research`, `/kotik-reflect`. Команды — явные триггеры одноимённых
-скиллов из `.opencode/skills/`; скиллы активируются и неявно, по смыслу
-запроса (кроме approve-переходов — они всегда требуют подтверждения).
+`/kotik-approve`, `/kotik-research`, `/kotik-reflect`, `/kotik-usage`.
+Команды — явные триггеры одноимённых скиллов из `.opencode/skills/`;
+скиллы активируются и неявно, по смыслу запроса (кроме approve-переходов —
+они всегда требуют подтверждения).
+
+`/kotik-usage` детерминированно и read-only читает локальную БД OpenCode и
+выводит в чат разбивку токенов по этапам, ролям и моделям. По умолчанию
+охватывает текущую корневую сессию и дерево субагентов; поддерживает
+`--session ID`, `--days N` и `--top N`. API-эквивалент стоимости считает
+по встроенным публичным тарифам и явно отделяет его от фактических списаний
+и стоимости подписок.
 
 Субагенты могут спавнить субагентов (`subagent_depth: 4` в opencode.json) —
 запас на цепочки вида orchestrator → reflector/researcher → explore-воркеры.
