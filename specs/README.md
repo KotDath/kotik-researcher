@@ -22,14 +22,16 @@ specs/
     agent-sessions.md             # роль → task_id для resume в рамках change
     tasks.md                      # чек-лист реализации
     deltas/<capability>.md        # дельта-спеки: только то, что меняется
+    invariants.md                 # refactor: сохраняемое поведение вместо deltas
   changes/archive/YYYY-MM-DD-<name>/   # завершённые изменения (история)
 ```
 
 ## Жизненный цикл change
 
-1. **draft** — создан через `/kotik-small-change`, `/kotik-bugfix` или
-   `/kotik-feature`. Feature использует vision.md; normal/large/risky
-   feature также design.md архитектора.
+1. **draft** — создан через `/kotik-small-change`, `/kotik-bugfix`,
+   `/kotik-feature` или `/kotik-refactor`. Feature использует vision.md;
+   refactor использует evidence-backed invariants.md; normal/large/risky
+   feature и refactor также используют design.md архитектора.
    В `proposal.md` первая строка: `Status: draft`.
 2. **approved** — пользователь принял спеку (`/kotik-approve`).
    Status меняется на `approved`. Начинается реализация по `tasks.md`.
@@ -46,15 +48,32 @@ specs/
 proposal.md содержит routing card:
 
 ```text
-Profile: small-change | bugfix | feature
+Profile: small-change | bugfix | feature | refactor
 Size: small | normal | large
 Contours: ui | core | data | agentic
 Risk: low | medium | high
+Implementation: standard | deep
+Implementation signals: <конкретные сигналы>
 ```
 
 Размер не отменяет semantic risk: migrations/data identity/provenance,
 embeddings/reindexing, nested agent workflow, permissions, formal logic и
 breaking IPC/API требуют deep specification.
+
+Implementation — отдельная ось: один strong или минимум два medium
+implementation-сигнала выбирают K3 implementer-deep; иначе работает Flash
+implementer с доступом к technical-consultant. Size/Risk не выбирают модель
+автоматически. Для legacy change без поля действует `standard`.
+
+## Refactor invariants
+
+`Profile: refactor` допустим только для изменения внутренней структуры без
+изменения наблюдаемого поведения. Он не создаёт capability deltas: вместо них
+invariants.md фиксирует публичные API/IPC, persisted formats, UI, error/retry,
+lifecycle и другие сохраняемые контракты. Каждый invariant содержит способ
+verification. Proposal содержит доказанный smell, structural goal и
+scope/non-goals. Необходимость изменить invariant требует остановки,
+переклассификации change и нового approval.
 
 ### Требование
 
@@ -149,4 +168,6 @@ proposal.md: `## Revision N — <дата>: <что изменилось и по
 - При архивации дельта мержится в `capabilities/` ПОЛНОСТЬЮ: каждое ADDED —
   добавлено, каждое MODIFIED — заменено, каждое REMOVED — удалено.
   Частичный мерж — рассинхрон спек с реальностью.
+- Refactor без изменения поведения архивируется без изменения capabilities;
+  его invariants и structural decision остаются в истории change.
 - Архивация — только после явного `/kotik-approve` от пользователя.

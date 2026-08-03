@@ -1,6 +1,6 @@
 ---
 name: kotik-feature
-description: Ведёт новую возможность приложения через SDD с выбором small/normal/large, продуктовых контуров и semantic risk; для large включает консилиум до architecture/spec. Use when пользователь хочет новую capability, новый workflow или существенное расширение поведения. NOT FOR наблюдаемого дефекта (kotik-bugfix), локальной обратимой правки (kotik-small-change) или чистого research.
+description: Ведёт новую возможность приложения через SDD с выбором small/normal/large, продуктовых контуров, semantic risk и implementation complexity; для large включает консилиум до architecture/spec. Use when пользователь хочет новую capability, новый workflow или существенное расширение поведения. NOT FOR наблюдаемого дефекта (kotik-bugfix), behavior-preserving рефакторинга (kotik-refactor), локальной обратимой правки (kotik-small-change) или чистого research.
 ---
 
 # Feature
@@ -14,6 +14,8 @@ Profile: feature
 Size: small | normal | large
 Contours: ui | core | data | agentic
 Risk: low | medium | high
+Implementation: standard | deep
+Implementation signals: <конкретные сигналы>
 ```
 
 Strong large-signals: greenfield/major subsystem; renderer+main+storage;
@@ -28,6 +30,10 @@ Large требует объяснения и подтверждения поль
 Semantic escalators повышают Risk независимо от размера diff:
 identity/migrations/provenance, embeddings/reindexing, nested agent
 workflow, permissions, formal logic, breaking IPC/API.
+
+Implementation оценить предварительно сейчас и окончательно после design/tasks.
+Один strong или минимум два medium сигнала из правил orchestrator → `deep`;
+иначе `standard`. Size и Risk не выбирают implementer автоматически.
 
 ## 2. Vision
 
@@ -70,7 +76,8 @@ requirements и задачи. Код не писать до явного `kotik-
 
 После approval:
 
-1. Flash implementer реализует workstreams зрелого проекта.
+1. Standard реализует Flash implementer с доступом к technical-consultant;
+   deep реализует K3 implementer-deep без consultant.
 2. K3 bootstrap-implementer допустим только для подтверждённого
    greenfield/bootstrap и должен передать стабилизированный каркас Flash.
 3. Test-author пишет необходимые automated tests.

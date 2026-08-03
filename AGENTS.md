@@ -56,7 +56,8 @@ docs/           # документация системы агентов (LESSON
 ## Hard rules (и почему)
 
 - **Спека до кода — только для `src/`.** Используй профиль
-  `/kotik-small-change`, `/kotik-bugfix` или `/kotik-feature`; код — только
+  `/kotik-small-change`, `/kotik-bugfix`, `/kotik-feature` или
+  `/kotik-refactor`; код — только
   после `Status: approved`. Переделка спеки
   стоит минуты, переделка кода — часы. Изменения самой системы агентов
   (`.opencode/`, AGENTS.md, docs/) SDD-спеки не требуют — они меняются
@@ -80,7 +81,8 @@ docs/           # документация системы агентов (LESSON
 | implementation-planner / test-strategist / security-reviewer | специализированные участники консилиума |
 | spec-writer-fast / spec-writer-deep | Flash/Pro: проверяемые proposal/deltas/tasks |
 | diagnostician | Flash: root-cause bugfix |
-| implementer | Flash: код зрелого проекта по tasks.md |
+| refactor-analyst | Sol/medium: evidence-backed smells и границы refactor |
+| implementer / implementer-deep | Flash/K3: standard/deep код по tasks.md |
 | technical-consultant | K3: редкая read-only помощь implementer'у |
 | reviewer | всегда GPT-5.6 Sol/medium: code/spec verdict |
 | test-author | Flash: пишет automated regression/E2E tests |
@@ -98,7 +100,8 @@ explore — единственное исключение, его Flash-моде
 opencode.json.
 
 Команды: `/kotik-small-change`, `/kotik-bugfix`, `/kotik-feature`,
-`/kotik-approve`, `/kotik-research`, `/kotik-reflect`, `/kotik-usage`.
+`/kotik-refactor`, `/kotik-approve`, `/kotik-research`, `/kotik-reflect`,
+`/kotik-usage`.
 Команды — явные триггеры одноимённых скиллов из `.opencode/skills/`;
 скиллы активируются и неявно, по смыслу запроса (кроме approve-переходов —
 они всегда требуют подтверждения).

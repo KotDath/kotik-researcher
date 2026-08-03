@@ -1,6 +1,6 @@
 ---
 name: kotik-small-change
-description: Ведёт локальную обратимую правку приложения через облегчённый SDD-профиль. Use when пользователь просит небольшое изменение существующего поведения, текста, настройки или UI без новой capability и без неизвестной причины дефекта. NOT FOR bugs (kotik-bugfix), новых возможностей (kotik-feature), migrations, embeddings, nested agent workflows, permissions или formal logic.
+description: Ведёт локальную обратимую правку приложения через облегчённый SDD-профиль. Use when пользователь просит небольшое изменение существующего поведения, текста, настройки или UI без новой capability и без неизвестной причины дефекта. NOT FOR bugs (kotik-bugfix), behavior-preserving структурного рефакторинга (kotik-refactor), новых возможностей (kotik-feature), migrations, embeddings, nested agent workflows, permissions или formal logic.
 ---
 
 # Small change
@@ -15,9 +15,11 @@ description: Ведёт локальную обратимую правку пр�
    `kotik-bugfix` и объяснить причину.
 3. Делегировать `spec-writer-fast` компактный proposal/delta/tasks без
    vision.md и design.md. В routing card: `Profile: small-change`,
-   `Size: small`, contours и risk.
+   `Size: small`, contours, risk, `Implementation: standard` и signals.
 4. Получить явное подтверждение пользователя через `kotik-approve`.
-5. Реализацию делегировать Flash implementer.
+5. Реализацию делегировать Flash implementer. Если до approval обнаружена
+   высокая implementation complexity, переключить профиль на feature/bugfix:
+   small-change всегда standard.
 6. Выполнить deterministic checks из tasks.md, затем reviewer.
 7. Если меняется пользовательский flow — app-tester. При renderer/both —
    ui-reviewer; ui-designer только для новой визуальной грамматики или

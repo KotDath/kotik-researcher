@@ -1,9 +1,11 @@
 Status: draft
 
-Profile: <small-change | bugfix | feature>
+Profile: <small-change | bugfix | feature | refactor>
 Size: <small | normal | large>
 Contours: <ui | core | data | agentic>
 Risk: <low | medium | high>
+Implementation: <standard | deep>
+Implementation signals: <конкретные сигналы; none для standard без сигналов>
 
 # Proposal: <имя-change>
 
@@ -19,6 +21,14 @@ Risk: <low | medium | high>
 
 - Новые: `<capability-name>` — <одно предложение>
 - Изменённые: `<capability-name>` — <что именно меняется>
+
+<!-- Для Profile: refactor заменить секцию Capabilities на:
+## Structural goal
+<Какой evidence-backed smell устраняем и какой проверяемый результат нужен.>
+
+## Scope / non-goals
+<Границы рефакторинга и что намеренно не меняется.>
+-->
 
 ## Влияние
 

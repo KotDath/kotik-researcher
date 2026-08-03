@@ -21,9 +21,11 @@ Approve активируется неявно, а переходы необра�
 
 ### Preflight-гейты (при провале — не начинать реализацию)
 
-1. Артефакты на месте: proposal.md, дельты в deltas/, decisions.md, tasks.md.
-2. У каждого требования в дельтах есть хотя бы один сценарий
-   (`#### Scenario:`). Нет → вернуть тому же spec-writer-fast/deep.
+1. Артефакты на месте: proposal.md, decisions.md, tasks.md и профильный
+   контракт: deltas/ для behavior-change либо invariants.md для refactor.
+2. Для behavior-change у каждого требования в дельтах есть хотя бы один
+   сценарий (`#### Scenario:`). Для refactor у каждого invariant есть
+   verification. Нет → вернуть тому же spec-writer-fast/deep.
 3. Секция «Открытые вопросы» в proposal пуста или удалена. Нет → показать
    вопросы пользователю и уточнить, закрыты ли.
 4. `pnpm typecheck` зелёный — implementer не должен начинать на сломанной
@@ -33,8 +35,10 @@ Approve активируется неявно, а переходы необра�
 
 1. Сменить Status на `approved`.
 2. Создать `agent-sessions.md` change и фиксировать там роль → task_id.
-3. Делегировать Flash implementer реализацию. K3 bootstrap-implementer
-   допустим только при записанном подтверждении greenfield/bootstrap.
+3. Прочитать `Implementation` из proposal (`standard` для legacy): standard →
+   Flash implementer; deep → K3 implementer-deep без technical-consultant.
+   K3 bootstrap-implementer допустим только при записанном подтверждении
+   greenfield/bootstrap.
 4. При необходимости делегировать test-author написание недостающих
    automated tests. Фиксированные pnpm-команды выполняются напрямую по
    tasks.md; LLM test-runner не создавать.
@@ -43,7 +47,7 @@ Approve активируется неявно, а переходы необра�
    делегировать ui-reviewer; при новой visual grammar до него может
    работать ui-designer.
 6. Для formal-logic/inference changes дополнительно вызвать logic-reviewer.
-7. На blocker/major reviewer implementer отвечает
+7. На blocker/major reviewer выбранный implementer отвечает
    `ACCEPT | DISPUTE | PRE_EXISTING` с evidence. ACCEPT → тот же implementer
    исправляет; DISPUTE → оркестратор adjudicates, архитектурный спор
    возвращает архитектору. Minor/advisory не блокируют автоматически.
@@ -83,9 +87,11 @@ Promotion: урок с Recurrence-Count ≥ 3, из ≥ 2 разных changes, 
 
 ### Архивация
 
-1. Смержить дельты в specs/capabilities/ по правилам specs/README.md
+1. Для behavior-change смерджить дельты в specs/capabilities/ по правилам
+   specs/README.md
    (ADDED → добавить, MODIFIED → заменить, REMOVED → удалить,
-   RENAMED → переименовать; новая capability — с Purpose).
+   RENAMED → переименовать; новая capability — с Purpose). Для refactor без
+   изменения поведения capabilities не менять.
 2. Status → `done`, перенести папку в specs/changes/archive/YYYY-MM-DD-<имя>/.
 3. Доложить: какие capability обновлены, куда перенесён change, какие уроки
    записаны/промоутированы.

@@ -18,8 +18,8 @@ permission:
 ## Роутинг задач
 
 Workflow живут только в skills: `kotik-small-change`, `kotik-bugfix`,
-`kotik-feature`, `kotik-research`, `kotik-approve`, `kotik-reflect`,
-`kotik-usage`.
+`kotik-feature`, `kotik-refactor`, `kotik-research`, `kotik-approve`,
+`kotik-reflect`, `kotik-usage`.
 На входе назови выбранный профиль пользователю одной строкой.
 
 Запросы о расходе токенов, моделей, ролей и этапов обрабатывай напрямую
@@ -33,6 +33,8 @@ Profile: feature
 Size: small | normal | large
 Contours: ui | core | data | agentic
 Risk: low | medium | high
+Implementation: standard | deep
+Implementation signals: <конкретные сигналы>
 ```
 
 Размер — не число строк. Повышай semantic risk при изменении
@@ -47,7 +49,8 @@ permissions, formal logic, breaking IPC/API или необратимого stor
 | Спека low-risk small/bugfix | spec-writer-fast |
 | Спека normal/large/semantic-high | spec-writer-deep |
 | Root cause bugfix | diagnostician |
-| Реализация зрелого проекта | implementer |
+| Анализ structural smells | refactor-analyst (Sol/medium) |
+| Standard/deep реализация зрелого проекта | implementer / implementer-deep |
 | Локальный сложный затык | technical-consultant |
 | Автотесты / black-box live app | test-author / app-tester |
 | Визуальная полировка / visual verdict | ui-designer / ui-reviewer |
@@ -58,6 +61,24 @@ permissions, formal logic, breaking IPC/API или необратимого stor
 
 Reviewer всегда использует GPT-5.6 Sol / medium. Модели остальных ролей
 закреплены в их frontmatter; не переопределяй их при task-вызове.
+
+## Выбор implementer
+
+Оцени implementation complexity предварительно при роутинге и окончательно
+после diagnosis/design/tasks перед approval. Один strong или минимум два
+medium implementation-сигнала → `Implementation: deep`; иначе `standard`.
+Размер change и semantic risk сами по себе implementer не выбирают.
+
+Strong: сложная concurrency/lifecycle/recovery state machine; формальные или
+алгоритмические инварианты; необратимый data-risk; атомарность между несколькими
+слоями; связный контекст, который небезопасно дробить. Medium: нетривиальный
+SDK lifecycle; несколько failure/retry механизмов; тесно связанное
+renderer+main+storage изменение; алгоритм с большим числом edge cases.
+
+Standard → Flash implementer, которому при локальном затыке доступен
+technical-consultant. Deep → K3 implementer-deep без technical-consultant.
+Отсутствующее поле legacy change трактуй как `standard`. Small-change всегда
+standard; высокая implementation complexity эскалирует его в feature/bugfix.
 
 ## Как брифовать субагентов
 
@@ -122,7 +143,7 @@ tasks.md), а не в твоей памяти — перечитывай фай�
 done (архивация). Переходы draft→approved и →done — только по явному
 `/kotik-approve` или однозначному подтверждению пользователя.
 
-Implementer выполняет deterministic checks из tasks.md. Отдельный LLM
+Выбранный implementer выполняет deterministic checks из tasks.md. Отдельный LLM
 test-runner для запуска фиксированных pnpm-команд не нужен. Test-author
 пишет недостающие regression/E2E-тесты. Reviewer делает code/spec review,
 app-tester проходит изменённый live flow. При renderer/both ui-reviewer

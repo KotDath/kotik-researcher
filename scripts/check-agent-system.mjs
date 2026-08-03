@@ -53,6 +53,28 @@ if (!/^variant:\s*medium$/m.test(reviewer)) {
   errors.push('reviewer.md: reviewer must use variant medium')
 }
 
+const deepImplementer = frontmatter(join(agentsDir, 'implementer-deep.md'))
+if (!/^model:\s*kimi-for-coding\/k3$/m.test(deepImplementer)) {
+  errors.push('implementer-deep.md: deep implementer must use kimi-for-coding/k3')
+}
+if (!/^ {4}explore:\s*allow$/m.test(deepImplementer)) {
+  errors.push('implementer-deep.md: deep implementer must allow explore')
+}
+if (/^ {4}technical-consultant:\s*allow$/m.test(deepImplementer)) {
+  errors.push('implementer-deep.md: must not call technical-consultant')
+}
+
+const refactorAnalyst = frontmatter(join(agentsDir, 'refactor-analyst.md'))
+if (!/^model:\s*openai\/gpt-5\.6-sol$/m.test(refactorAnalyst)) {
+  errors.push('refactor-analyst.md: must use openai/gpt-5.6-sol')
+}
+if (!/^variant:\s*medium$/m.test(refactorAnalyst)) {
+  errors.push('refactor-analyst.md: must use variant medium')
+}
+if (!/^ {2}edit:\s*deny$/m.test(refactorAnalyst)) {
+  errors.push('refactor-analyst.md: must be read-only')
+}
+
 const config = JSON.parse(readFileSync(join(root, 'opencode.json'), 'utf8'))
 for (const [name, value] of Object.entries(config.agent ?? {})) {
   if (name !== 'explore' && value.model) {
@@ -74,6 +96,21 @@ for (const file of readdirSync(commandsDir).filter((name) => name.endsWith('.md'
   const text = readFileSync(join(commandsDir, file), 'utf8')
   const skill = text.match(/скилл\s+([a-z0-9-]+)/i)?.[1]
   if (skill && !skillNames.has(skill)) errors.push(`${file}: missing skill ${skill}`)
+}
+
+const orchestratorText = readFileSync(join(agentsDir, 'orchestrator.md'), 'utf8')
+const approveText = readFileSync(join(skillsDir, 'kotik-approve', 'SKILL.md'), 'utf8')
+const proposalTemplate = readFileSync(join(root, 'specs/templates/proposal.md'), 'utf8')
+for (const required of ['implementer-deep', 'refactor-analyst', 'kotik-refactor']) {
+  if (!orchestratorText.includes(required)) {
+    errors.push(`orchestrator.md: missing routing reference ${required}`)
+  }
+}
+if (!approveText.includes('implementer-deep')) {
+  errors.push('kotik-approve: missing deep implementation dispatch')
+}
+if (!proposalTemplate.includes('Implementation: <standard | deep>')) {
+  errors.push('proposal template: missing Implementation routing field')
 }
 
 if (errors.length) {

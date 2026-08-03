@@ -2,4 +2,4 @@
 
 | Роль | Task ID | Назначение | Статус |
 |---|---|---|---|
-| implementer | `<ses_...>` | <workstream> | active |
+| implementer или implementer-deep | `<ses_...>` | <workstream> | active |
