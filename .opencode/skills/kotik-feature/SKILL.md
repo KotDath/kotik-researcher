@@ -68,9 +68,12 @@ ui-designer при новой visual grammar. Researcher закрывает то
 - small low-risk → spec-writer-fast;
 - normal/large/semantic-high → spec-writer-deep.
 
-Spec-writer переводит vision/design в proposal/deltas/tasks, но не
-принимает архитектурные решения. Показать пользователю proposal,
-requirements и задачи. Код не писать до явного `kotik-approve`.
+Spec-writer переводит vision/design в proposal/deltas/decisions/tasks, но не
+принимает архитектурные решения. Оркестратор перечитывает draft и показывает
+в основном чате полный Spec review packet по своему контракту: не только
+summary/пути, а scope/non-goals, все requirements/scenarios, последовательность
+tasks, проверки, риски и вопросы. После каждой коррекции показать актуальный
+packet снова. Код не писать до `kotik-approve` последней ревизии.
 
 ## 5. Implementation and verification
 

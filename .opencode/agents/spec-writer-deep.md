@@ -40,3 +40,7 @@ failure, retry/idempotency, reindexing и recovery. Для agentic workflow —
 
 Задачи ссылаются на design, а не изобретают его. Финальная группа содержит
 typecheck, lint, build/smoke, automated tests и app-testing сценарии.
+
+В финале верни оркестратору `SPEC_READY`, пути и краткую дельту созданной или
+изменённой ревизии. Не ограничивайся фразой «файлы готовы»: оркестратор
+перечитает их и покажет пользователю полный Spec review packet.

@@ -17,8 +17,11 @@ description: Диагностирует и исправляет наблюдае
    оценить повторно. Один strong или минимум два medium сигнала из правил
    orchestrator → `deep`, иначе `standard`.
 5. Создать компактный change с routing card `Profile: bugfix`,
-   `Implementation` и signals; получить
-   явное approval до изменения src.
+   `Implementation` и signals; обязательны proposal, delta, decisions и tasks.
+   Перечитать draft и показать полный Spec review packet по контракту
+   orchestrator: root cause, требования, regression, порядок исправления и
+   проверки. После каждой коррекции показать заново; только затем получить
+   approval до изменения src.
 6. Test-author пишет regression test, когда дефект можно стабильно
    автоматизировать. Тест до исправления должен доказуемо падать.
 7. Standard исправляет Flash implementer и при локальном затыке может вызвать

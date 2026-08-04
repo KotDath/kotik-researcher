@@ -32,3 +32,7 @@ typecheck, lint, build/smoke, релевантные тесты и app-testing f
 (миграция/идентичность данных, provenance, embeddings, nested workflow,
 permissions, formal logic, breaking IPC/API), ничего не додумывай и верни
 `ESCALATE_TO_SPEC_WRITER_DEEP`.
+
+В финале верни оркестратору `SPEC_READY`, пути и краткую дельту созданной или
+изменённой ревизии. Не ограничивайся фразой «файлы готовы»: оркестратор
+перечитает их и покажет пользователю полный Spec review packet.

@@ -16,20 +16,25 @@ description: Проводит доказательный behavior-preserving р�
 5. Small/standard → spec-writer-fast. Normal/large/deep → solution-architect
    создаёт design.md, затем spec-writer-deep. Change содержит proposal.md,
    invariants.md, decisions.md и tasks.md; capability deltas не создаются.
-6. Зафиксировать baseline: `pnpm typecheck`, `pnpm lint`, `pnpm build` и
+6. Перечитать draft и показать полный Spec review packet по контракту
+   orchestrator: evidence/smell, structural goal, scope/non-goals, все
+   invariants, порядок tasks и проверки. После коррекции показать актуальную
+   ревизию снова; путь к файлам не заменяет презентацию.
+7. Зафиксировать baseline: `pnpm typecheck`, `pnpm lint`, `pnpm build` и
    релевантные тесты. При пробеле test-author сначала пишет characterization
    tests текущего поведения. Не принимать необъяснённый красный baseline.
-7. Перед approval окончательно оценить implementation complexity. Strong:
+8. Перед approval окончательно оценить implementation complexity. Strong:
    сложная concurrency/lifecycle/recovery state machine; формальные инварианты;
    необратимый data-risk; атомарность между слоями; связный контекст, который
    небезопасно дробить. Medium: нетривиальный SDK lifecycle; несколько
    failure/retry механизмов; тесное renderer+main+storage изменение; алгоритм
    с множеством edge cases. Один strong или два medium → deep.
-8. После явного approve: standard выполняет Flash implementer с возможностью
-   вызвать technical-consultant; deep выполняет K3 implementer-deep без него.
-9. Reviewer проверяет сохранение invariants и достижение structural goal.
+9. После approve последней показанной ревизии standard выполняет Flash
+   implementer с возможностью вызвать technical-consultant; deep выполняет K3
+   implementer-deep без него.
+10. Reviewer проверяет сохранение invariants и достижение structural goal.
    Попутное изменение поведения — blocker.
-10. Для user flow вызвать app-tester; при renderer/both — ui-reviewer. Новая
+11. Для user flow вызвать app-tester; при renderer/both — ui-reviewer. Новая
     visual grammar означает reclassify, а не refactor.
 
 Если реализация требует изменить invariant, остановить код, переклассифицировать

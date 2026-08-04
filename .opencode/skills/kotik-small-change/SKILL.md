@@ -13,15 +13,18 @@ description: Ведёт локальную обратимую правку пр�
      breaking IPC/API.
 2. При нарушении любого условия переключиться на `kotik-feature` или
    `kotik-bugfix` и объяснить причину.
-3. Делегировать `spec-writer-fast` компактный proposal/delta/tasks без
-   vision.md и design.md. В routing card: `Profile: small-change`,
+3. Делегировать `spec-writer-fast` компактные proposal/delta/decisions/tasks
+   без vision.md и design.md. В routing card: `Profile: small-change`,
    `Size: small`, contours, risk, `Implementation: standard` и signals.
-4. Получить явное подтверждение пользователя через `kotik-approve`.
-5. Реализацию делегировать Flash implementer. Если до approval обнаружена
+4. Перечитать draft с диска и показать полный Spec review packet по контракту
+   orchestrator. Не заменять его путём к файлам или кратким резюме.
+5. Принять корректировки, обновить draft тем же spec-writer и снова показать
+   актуальный packet. Затем получить подтверждение через `kotik-approve`.
+6. Реализацию делегировать Flash implementer. Если до approval обнаружена
    высокая implementation complexity, переключить профиль на feature/bugfix:
    small-change всегда standard.
-6. Выполнить deterministic checks из tasks.md, затем reviewer.
-7. Если меняется пользовательский flow — app-tester. При renderer/both —
+7. Выполнить deterministic checks из tasks.md, затем reviewer.
+8. Если меняется пользовательский flow — app-tester. При renderer/both —
    ui-reviewer; ui-designer только для новой визуальной грамматики или
    существенного визуального дефекта.
 
