@@ -15,11 +15,13 @@
     "lint": "eslint .",
     "check:agents": "node scripts/check-agent-system.mjs",
     "test:usage": "node --test .opencode/skills/kotik-usage/scripts/usage-report.test.mjs",
+    "test:agent-lifecycle": "node --test scripts/agent-lifecycle.test.mjs",
     "test": "pnpm test:unit && pnpm test:e2e && pnpm test:visual",
     "test:unit": "vitest run --passWithNoTests",
     "test:e2e": "pnpm build && playwright test --project=e2e",
     "test:e2e:quick": "electron-vite build && E2E_RENDERER_URL=http://localhost:5173 playwright test --project=e2e",
     "test:visual": "pnpm build && playwright test --project=visual",
+    "test:agent:lifecycle": "node scripts/agent-lifecycle.mjs",
     "test:agent:electron": "node scripts/test-agent-electron.mjs",
     "test:agent:dev": "node scripts/test-agent-dev.mjs"
   },
@@ -36,7 +38,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/mcp": "^0.0.78",
+    "@playwright/mcp": "0.0.78",
     "@playwright/test": "^1.62.0",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",

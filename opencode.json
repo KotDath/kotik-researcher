@@ -12,11 +12,13 @@
     "playwright": {
       "type": "local",
       "command": [
-        "npx",
-        "-y",
-        "@playwright/mcp@latest",
+        "pnpm",
+        "exec",
+        "playwright-mcp",
         "--cdp-endpoint",
-        "http://127.0.0.1:9222"
+        "http://127.0.0.1:9222",
+        "--output-dir",
+        "/tmp/opencode"
       ]
     }
   }

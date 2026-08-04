@@ -7,16 +7,14 @@
 // настроек и API-ключей.
 import { spawn } from 'node:child_process'
 import { existsSync } from 'node:fs'
-import { createRequire } from 'node:module'
 import {
   CDP_PORT,
+  MAIN_ENTRY,
   USER_DATA_DIR,
-  buildEnv,
   ensurePortFree,
+  prodLaunchSpec,
   seedDemoData
 } from './lib-agent.mjs'
-
-const MAIN_ENTRY = './out/main/index.mjs'
 
 if (!existsSync(MAIN_ENTRY)) {
   console.error(
@@ -30,12 +28,11 @@ ensurePortFree(launch)
 
 function launch() {
   seedDemoData()
-  const electronBinary = createRequire(import.meta.url)('electron')
-  const child = spawn(
-    electronBinary,
-    [MAIN_ENTRY, '--e2e', `--remote-debugging-port=${CDP_PORT}`],
-    { stdio: 'inherit', env: buildEnv() }
-  )
+  const spec = prodLaunchSpec()
+  const child = spawn(spec.command, spec.args, {
+    stdio: 'inherit',
+    env: spec.env
+  })
   child.on('error', (err) => {
     console.error(`[test:agent:electron] не удалось запустить Electron: ${err.message}`)
     process.exit(1)

@@ -5,11 +5,15 @@
 //
 // electron-vite читает REMOTE_DEBUGGING_PORT и ELECTRON_CLI_ARGS
 // (chunks/lib: startElectron) — флагов командной строки для electron нет.
+// ВАЖНО: electron-vite 5.0.0 сам затирает env ELECTRON_CLI_ARGS при старте
+// (cli.js: cac всегда кладёт options['--'] = [] — пустой массив truthy — и
+// перезаписывает ELECTRON_CLI_ARGS на '[]'). Поэтому --e2e передаём через
+// официальный passthrough "electron-vite dev -- --e2e", а не через env.
 import { spawn } from 'node:child_process'
 import {
   CDP_PORT,
   USER_DATA_DIR,
-  buildEnv,
+  devLaunchSpec,
   ensurePortFree,
   seedDemoData
 } from './lib-agent.mjs'
@@ -18,13 +22,10 @@ ensurePortFree(launch)
 
 function launch() {
   seedDemoData()
-  const child = spawn('pnpm', ['exec', 'electron-vite', 'dev'], {
+  const spec = devLaunchSpec()
+  const child = spawn(spec.command, spec.args, {
     stdio: 'inherit',
-    env: buildEnv({
-      NODE_ENV: 'development',
-      REMOTE_DEBUGGING_PORT: String(CDP_PORT),
-      ELECTRON_CLI_ARGS: JSON.stringify(['--e2e'])
-    })
+    env: spec.env
   })
   child.on('error', (err) => {
     console.error(`[test:agent:dev] не удалось запустить electron-vite dev: ${err.message}`)

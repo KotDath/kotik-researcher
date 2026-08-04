@@ -75,10 +75,59 @@ if (!/^ {2}edit:\s*deny$/m.test(refactorAnalyst)) {
   errors.push('refactor-analyst.md: must be read-only')
 }
 
+const appTester = frontmatter(join(agentsDir, 'app-tester.md'))
+if (!/^model:\s*opencode-go\/deepseek-v4-flash$/m.test(appTester)) {
+  errors.push('app-tester.md: must use opencode-go/deepseek-v4-flash')
+}
+if (!/^ {2}edit:\s*deny$/m.test(appTester)) {
+  errors.push('app-tester.md: must be read-only (edit deny)')
+}
+if (!/^ {2}"?playwright_browser_run_code_unsafe"?:\s*deny$/m.test(appTester)) {
+  errors.push('app-tester.md: playwright_browser_run_code_unsafe must be denied in permission')
+}
+const bashAllowlist = Object.fromEntries(
+  [...appTester.matchAll(/^ {4}"([^"]+)":\s*(allow|deny)$/gm)].map((m) => [m[1], m[2]])
+)
+if (bashAllowlist['*'] !== 'deny') {
+  errors.push('app-tester.md: bash must deny by default ("*": deny)')
+}
+const allowedBash = Object.entries(bashAllowlist)
+  .filter(([, level]) => level === 'allow')
+  .map(([pattern]) => pattern)
+  .sort()
+if (allowedBash.some((pattern) => pattern.includes('*'))) {
+  errors.push('app-tester.md: bash allowlist must use exact commands, not wildcard/suffix patterns')
+}
+const expectedBash = [
+  'pnpm test:agent:lifecycle start dev',
+  'pnpm test:agent:lifecycle start prod',
+  'pnpm test:agent:lifecycle status',
+  'pnpm test:agent:lifecycle stop',
+  'pnpm test:agent:lifecycle logs'
+].sort()
+if (JSON.stringify(allowedBash) !== JSON.stringify(expectedBash)) {
+  errors.push(`app-tester.md: bash allowlist must be exactly ${JSON.stringify(expectedBash)}`)
+}
+
 const config = JSON.parse(readFileSync(join(root, 'opencode.json'), 'utf8'))
 for (const [name, value] of Object.entries(config.agent ?? {})) {
   if (name !== 'explore' && value.model) {
     errors.push(`opencode.json: model for ${name} must live in its subagent frontmatter`)
+  }
+}
+const playwrightMcp = config.mcp?.playwright
+if (!playwrightMcp) {
+  errors.push('opencode.json: mcp.playwright is required')
+} else {
+  const command = Array.isArray(playwrightMcp.command) ? playwrightMcp.command.join(' ') : ''
+  if (/npx|@playwright\/mcp@latest/.test(command)) {
+    errors.push('opencode.json: mcp.playwright must use local pnpm exec playwright-mcp, not npx @latest')
+  }
+  if (!command.includes('pnpm exec playwright-mcp')) {
+    errors.push('opencode.json: mcp.playwright must run pnpm exec playwright-mcp')
+  }
+  if (!command.includes('--cdp-endpoint')) {
+    errors.push('opencode.json: mcp.playwright must set --cdp-endpoint http://127.0.0.1:9222')
   }
 }
 

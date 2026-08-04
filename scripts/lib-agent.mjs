@@ -1,7 +1,8 @@
-// Общие утилиты агентских прогонов (test:agent:dev / test:agent:electron):
-// изоляция userData + сид-данные + проверка CDP-порта.
+// Общие утилиты агентских прогонов (test:agent:dev / test:agent:electron /
+// test:agent:lifecycle): изоляция userData + сид-данные + проверка CDP-порта.
 import { createServer } from 'node:net'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -9,6 +10,7 @@ import { randomUUID } from 'node:crypto'
 export const CDP_PORT = 9222
 export const USER_DATA_DIR = join(tmpdir(), 'kotik-ui-review-userdata')
 export const DEMO_PROJECT_DIR = join(tmpdir(), 'kotik-ui-review-project')
+export const MAIN_ENTRY = './out/main/index.mjs'
 
 // Как в E2E fixture: только то, что нужно Electron на linux-десктопе.
 // Credentials сюда не попадают — реальные API-ключи агенту недоступны.
@@ -70,6 +72,16 @@ export function seedDemoData() {
   )
 }
 
+/** Проверяет, что TCP-порт свободен (можно ли на него слушать). */
+export function isPortFree(port, host = '127.0.0.1') {
+  return new Promise((resolve) => {
+    const probe = createServer()
+    probe.once('error', () => resolve(false))
+    probe.once('listening', () => probe.close(() => resolve(true)))
+    probe.listen(port, host)
+  })
+}
+
 /** Проверяет, что CDP-порт свободен; иначе понятная ошибка и exit 1. */
 export function ensurePortFree(onFree) {
   const probe = createServer()
@@ -84,4 +96,30 @@ export function ensurePortFree(onFree) {
     probe.close(() => onFree())
   })
   probe.listen(CDP_PORT, '127.0.0.1')
+}
+
+/**
+ * Единые launch-спеки агентских режимов — используются и foreground-скриптами
+ * (test:agent:dev / test:agent:electron), и lifecycle controller'ом
+ * (test:agent:lifecycle). НЕ дублируем команды запуска по трём скриптам.
+ */
+export function devLaunchSpec(extraEnv = {}) {
+  return {
+    command: 'pnpm',
+    args: ['exec', 'electron-vite', 'dev', '--', '--e2e'],
+    env: buildEnv({
+      NODE_ENV: 'development',
+      REMOTE_DEBUGGING_PORT: String(CDP_PORT),
+      ...extraEnv
+    })
+  }
+}
+
+export function prodLaunchSpec(extraEnv = {}) {
+  const electronBinary = createRequire(import.meta.url)('electron')
+  return {
+    command: electronBinary,
+    args: [MAIN_ENTRY, '--e2e', `--remote-debugging-port=${CDP_PORT}`],
+    env: buildEnv(extraEnv)
+  }
 }

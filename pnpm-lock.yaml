@@ -22,7 +22,7 @@ importers:
         specifier: ^10.0.1
         version: 10.0.1(eslint@10.8.0(jiti@2.7.0))
       '@playwright/mcp':
-        specifier: ^0.0.78
+        specifier: 0.0.78
         version: 0.0.78
       '@playwright/test':
         specifier: ^1.62.0

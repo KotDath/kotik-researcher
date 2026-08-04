@@ -23,6 +23,11 @@
 - `pnpm test:visual` — visual regression против baseline
 - `pnpm test:agent:electron` — приложение с CDP :9222 для агентской проверки
 - `pnpm test:agent:dev` — Electron dev с CDP :9222 для быстрой проверки
+- `pnpm test:agent:lifecycle start dev|prod` — detached-запуск агентского Electron (state/pid/log в /tmp/opencode)
+- `pnpm test:agent:lifecycle status` — READY / STARTING / STOPPED / CDP_UNAVAILABLE / PAGE_MISSING / TARGET_CHANGED
+- `pnpm test:agent:lifecycle stop` — остановка только записанной process group (idempotent, PID-safety)
+- `pnpm test:agent:lifecycle logs` — хвост stdout/stderr запущенного child
+- `pnpm test:agent-lifecycle` — node:test тесты lifecycle controller'а
 
 После любого изменения кода `pnpm typecheck` и `pnpm lint` обязаны проходить.
 
@@ -129,13 +134,21 @@ opencode.json.
 Корректные данные не гарантируют корректный рендер (LRN-20260729-001).
 Изменённый пользовательский flow проходит black-box проверку app-tester.
 Каждый change, затрагивающий renderer, дополнительно проходит независимое
-visual review. Playwright MCP зарегистрирован в opencode.json:
+visual review. Playwright MCP зарегистрирован в opencode.json
+(`pnpm exec playwright-mcp` с `--cdp-endpoint http://127.0.0.1:9222`,
+выходные файлы — в `/tmp/opencode`):
 
-- **Быстрый:** `pnpm test:agent:dev` запускает Electron dev с CDP :9222.
-- **Полный:** `pnpm test:agent:electron` запускает живой
-  Electron с CDP :9222, изолированный userData с сид-данными — реальные
-  проекты и API-ключи агенту недоступны. Оба используют MCP `playwright`
-  с `--cdp-endpoint :9222`.
+- **Быстрый:** `pnpm test:agent:lifecycle start dev` — electron-vite dev
+  (main из исходников с HMR, renderer из dev-server) на CDP :9222.
+- **Полный:** `pnpm test:agent:lifecycle start prod` — живой Electron
+  с CDP :9222, изолированный userData с сид-данными — реальные проекты
+  и API-ключи агенту недоступны.
+- Оба режима управляются lifecycle controller'ом: `status` даёт одну из
+  классификаций READY / STARTING / STOPPED / CDP_UNAVAILABLE /
+  PAGE_MISSING / TARGET_CHANGED; `stop` завершает ТОЛЬКО записанную
+  process group (PID-safety) и всегда вызывается по завершении проверки.
+- Тесты контроллера: `pnpm test:agent-lifecycle` (детерминированные,
+  без реального Electron).
 
 Контракт implementer'а: в отчёте оркестратору implementer обязан указать
 строки `Change touches: renderer|main|both` и

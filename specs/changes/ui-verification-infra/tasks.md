@@ -132,12 +132,22 @@
 
 ## 13. Унификация MCP — один CDP-сервер (решение A)
 
-- [ ] 13.1 Удалить `mcp.playwright-cdp` из `opencode.json`
-- [ ] 13.2 Изменить `mcp.playwright` на единый CDP-сервер: команда `["npx", "-y", "@playwright/mcp@latest", "--cdp-endpoint", "http://127.0.0.1:9222"]`
-- [ ] 13.3 Переделать `pnpm test:agent:dev`: electron-vite dev с `--remote-debugging-port=9222` (main из исходников с HMR + renderer из vite dev-server), а не вывод инструкции
-- [ ] 13.4 Удалить из кода и документации все упоминания автономного Chromium-режима MCP и сервера `playwright-cdp`
-- [ ] 13.5 Обновить `docs/ui-review.md`: ссылки на MCP-инструменты с префиксом `playwright_*` (единый сервер)
-- [ ] 13.6 Проверить живой прогон: `pnpm test:agent:dev` + MCP `browser_snapshot` — агент получает accessibility-дерево electron-vite dev-сборки
+- [x] 13.1 Удалить `mcp.playwright-cdp` из `opencode.json` (в конфиге только `mcp.playwright`)
+- [x] 13.2 Изменить `mcp.playwright` на единый CDP-сервер: локальная команда
+  `["pnpm", "exec", "playwright-mcp", "--cdp-endpoint", "http://127.0.0.1:9222",
+  "--output-dir", "/tmp/opencode"]` (вместо `npx -y @playwright/mcp@latest` —
+  закреплённая версия `0.0.78`, см. hardening 19.3)
+- [x] 13.3 Переделать `pnpm test:agent:dev`: electron-vite dev с
+  `--remote-debugging-port=9222` (main из исходников с HMR + renderer из vite
+  dev-server); правка dev-изоляции (`-- --e2e` passthrough) и live-проверка
+  READY — в hardening 19.9
+- [x] 13.4 Удалить из кода и документации все упоминания автономного
+  Chromium-режима MCP и сервера `playwright-cdp` (grep по src/scripts/.opencode/
+  docs/AGENTS.md/opencode.json — упоминаний нет)
+- [x] 13.5 Обновить `docs/ui-review.md`: ссылки на MCP-инструменты с префиксом
+  `playwright_*` (единый сервер) — в документе инструментальных ссылок нет,
+  консистентно
+- [ ] 13.6 Проверить живой прогон: `pnpm test:agent:dev` + MCP `browser_snapshot` — агент получает accessibility-дерево electron-vite dev-сборки (полный MCP flow — app-tester, 19.10)
 
 ## 14. Невидимые окна (решение B)
 
@@ -188,3 +198,70 @@
 - [ ] 18.5 Проверить сценарии из новой дельты (конвейер, невидимые окна,
   модели, контракт implementer'а)
 - [ ] 18.6 Итоговый smoke: `pnpm typecheck && pnpm lint && pnpm build && pnpm test` — всё зелёное
+
+## 19. Hardening: lifecycle controller, локальный MCP, протокол app-tester
+
+- [x] 19.1 Создать `scripts/agent-lifecycle.mjs`: `start dev|prod` (detached
+  process group, state/pid/log только в /tmp/opencode; сид-данные после
+  preflight и до spawn; лог очищается на прогон), `status` (ровно одна
+  классификация READY/STARTING/STOPPED/CDP_UNAVAILABLE/PAGE_MISSING/TARGET_CHANGED),
+  `stop` (kill только верифицированных процессов: leader по starttime+pgrp,
+  иначе члены прогона по run id; idempotent; защита от PID reuse; при
+  неудаче state сохраняется и повторный stop возможен), `logs`
+- [x] 19.2 Foreground-команды `test:agent:dev` / `test:agent:electron`
+  сохранены по поведению; launch-спеки вынесены в `lib-agent.mjs`
+  (devLaunchSpec/prodLaunchSpec), дублирование убрано
+- [x] 19.3 MCP playwright в opencode.json: `pnpm exec playwright-mcp`
+  (локальный бинарник, версия `@playwright/mcp` закреплена точно `0.0.78`)
+  с `--cdp-endpoint http://127.0.0.1:9222` и `--output-dir /tmp/opencode`
+- [x] 19.4 `.opencode/agents/app-tester.md` переписан как конечный автомат
+  PRECHECK → START → READY → MCP → FLOW → EVIDENCE → STOP: bash только для
+  точных вызовов lifecycle-контроллера (без `*`, без `;`-цепочек), явные
+  запреты (исходники, /proc, reproducer, root-cause), механический deny
+  `playwright_browser_run_code_unsafe`, один retry по формальной
+  классификации, stop всегда, evidence только в /tmp/opencode
+- [x] 19.5 `scripts/check-agent-system.mjs` валидирует app-tester
+  (модель Flash, edit deny, bash allowlist `"*": deny` + точный набор
+  команд без wildcard, deny playwright_browser_run_code_unsafe)
+  и mcp.playwright (pnpm exec playwright-mcp, --cdp-endpoint, без npx/@latest)
+- [x] 19.6 Автотесты контроллера `scripts/agent-lifecycle.test.mjs`
+  (node:test): занятый порт, seed после preflight/до spawn, очистка лога
+  между прогонами, child exit до readiness, stale state, mismatched pgrp →
+  сигнал не посылается, dead leader/live потомок → state не теряется,
+  STOP_FAILED → state на месте + exit≠0 + повторный stop, смена page target
+  → TARGET_CHANGED, idempotent stop, PID safety; npm-скрипт
+  `test:agent-lifecycle`
+- [x] 19.7 AGENTS.md: команды `test:agent:lifecycle`/`test:agent-lifecycle`
+  и секция «App и UI verification» обновлены под lifecycle controller
+- [x] 19.8 Проверки после hardening и review-fixes: `pnpm typecheck`,
+  `pnpm lint`, `pnpm check:agents`, `pnpm test:agent-lifecycle` — все зелёные;
+  `pnpm lint` зелёный при нетронутом tracked `st2.mjs` (scoped eslint
+  override только для него, глобалы process/document/console/setTimeout)
+- [x] 19.9 Live-smoke после review-fixes: `start dev` → status READY (page
+  target «Kotik Researcher») → `stop` → STOPPED + порт 9222 свободен; то же
+  для `start prod` (stop обязателен в обоих)
+- [ ] 19.10 Полный MCP flow (browser_snapshot/click/screenshot через
+  `playwright_*`) на live-приложении — выполняет app-tester отдельным прогоном
+
+## 20. Review fixes (CHANGES_REQUESTED)
+
+- [x] 20.1 Bash allowlist app-tester: только точные команды без `*`
+  (start dev/prod, status, stop, logs), без прямого `node scripts/...`;
+  механический deny `playwright_browser_run_code_unsafe` (schema: index
+  signature `[key: string]` в AgentConfig.permission поддерживает);
+  check-agent-system: exact-валидация без wildcard и точный набор команд
+- [x] 20.2 verifyGroup сверяет фактический pgrp со state.pgid; regression:
+  mismatched-pgrp state → stop не посылает сигнал чужой группе
+- [x] 20.3 Dead leader / live group: идентификация членов прогона по run id
+  (KOTIK_AGENT_RUN_ID в environ), state не теряется; regression: leader
+  убит, потомок жив → status не STOPPED, stop добивает только свой run
+- [x] 20.4 stop при groupDead=false: state сохраняется, STOP_FAILED +
+  ненулевой exit, повторный stop работает; regression + CLI-тест exit code
+- [x] 20.5 start вызывает seedDemoData после preflight и до spawn; regression:
+  сид-данные создаются, при провале preflight seed не вызывается
+- [x] 20.6 Лог прогона очищается на каждый start ('w'); regression: второй
+  прогон не содержит строк первого
+- [x] 20.7 eslint override только для tracked `st2.mjs` (process/document/
+  console/setTimeout), файл нетронут; scripts-таймеры переведены на
+  `node:timers/promises`, scripts override возвращён к console/process
+- [x] 20.8 tasks.md 19.8 переформулирован по факту (проверено после фиксов)
