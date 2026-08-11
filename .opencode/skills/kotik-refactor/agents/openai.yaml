@@ -1,4 +1,0 @@
-interface:
-  display_name: "Kotik Refactor"
-  short_description: "Безопасный behavior-preserving рефакторинг кода"
-  default_prompt: "Use $kotik-refactor to refactor selected code without changing observable behavior."

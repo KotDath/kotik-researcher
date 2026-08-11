@@ -1,4 +1,0 @@
-interface:
-  display_name: "Kotik Small Change"
-  short_description: "Локальная безопасная правка через облегчённый SDD-профиль"
-  default_prompt: "Примени профиль kotik-small-change к текущей задаче."

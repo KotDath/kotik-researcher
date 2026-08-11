@@ -1,4 +1,0 @@
-interface:
-  display_name: "Kotik Usage"
-  short_description: "Отчёт по токенам моделей, ролей и этапов OpenCode"
-  default_prompt: "Покажи usage-отчёт по текущей сессии и её субагентам."
