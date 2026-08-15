@@ -16,7 +16,7 @@ npm run tauri dev
 
 ## Как устроено
 
-Архитектурный инвариант: **ядро отделено от агента и от UI** (см. `docs/adr/0001-stack-rig-tauri-react.md`).
+Архитектурный инвариант: **ядро отделено от агента и от UI** (подробности — в `AGENTS.md`).
 
 - `src-tauri/crates/kotik-core` — контракты и порт `ChatAgent`; не зависит от Rig/Tauri, тестируется мок-агентом.
 - `src-tauri/crates/kotik-agent-rig` — адаптер Rig: DeepSeek-клиент (ключ из `DEEPSEEK_API_KEY`), модель `deepseek-v4-flash`, стриминг.
