@@ -28,21 +28,20 @@ description: Структурный поиск по коду через ast-inde
 cargo install --git https://github.com/defendend/Claude-ast-index-search ast-index
 
 # Индексация (один раз на проект, из корня репо):
-ast-index rebuild --type files
+ast-index rebuild
 ```
 
 Индекс лежит вне репозитория: `~/.cache/ast-index/<project-hash>/index.db`.
+Конфиг не нужен: `node_modules`, `dist`, `target` и прочее уже встроены
+в EXCLUDED_DIRS основного обхода.
 
-Почему `--type files` (проверено по исходникам v3.50.0): дефолтный
-`rebuild` (режим `all`) дополнительно индексирует `node_modules/**/*.d.ts`
-отдельным vendor-проходом, который **не читается** из exclude-конфига —
-700+ файлов шума в `map`/`explore`. Режим `files` делает только основной
-обход (он `.ast-index.yaml` уважает). Мы ничего не теряем: модули/deps
-ast-index умеет только для Gradle/SPM/Maven/Python, для Cargo их нет
-в принципе. `update` vendor-проход не запускает, так что `.d.ts` не вернутся.
-
-Проектный конфиг `.ast-index.yaml` в корне (exclude: node_modules, dist,
-target, gen) — коммитим в репо.
+**`node_modules/**/*.d.ts` индексируются намеренно** (отдельный vendor-проход,
+конфигом не отключается — исходники v3.50.0). Это фича, не шум: `search`/
+`explore` по зависимостям находят реальные API из `.d.ts`
+(`@tauri-apps/api`, react-markdown) без ручного копания в node_modules.
+Vendor-результаты понижены в ранжировании, наш код всегда сверху.
+Побочка: `map` без скоупа показывает node_modules сверху — используй
+`map --module src-tauri` / `--module src`.
 
 ## Core commands
 

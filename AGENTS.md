@@ -56,7 +56,6 @@ openspec/                   # SDD: спеки и changes (OpenSpec, ваниль
 ├── commands/kotik-*.md     # slash-команды скиллов reflect/usage
 └── agents/reflector.md     # субагент анализа дайджестов (deepseek-v4-flash)
 opencode.json               # разрешения: ast-index — bash без подтверждения
-.ast-index.yaml             # exclude-правила индекса ast-index (node_modules, target, ...)
 eslint.config.js            # flat config ESLint (eslint 9 + eslint-plugin-react)
 ```
 
@@ -112,13 +111,14 @@ PRIMARY-инструмент навигации по коду (вместо grep
 ast-index explore "stream chat reply"   # one-shot контекст по области кода
 ast-index usages ChatAgent              # все использования перед рефакторингом
 ast-index refs send_message             # определения + импорты + usages
-ast-index map                           # карта проекта
+ast-index map --module src-tauri        # карта проекта (скоуп; без --module шумит node_modules)
 ast-index update                        # инкрементально после правок
-ast-index rebuild --type files          # полный переиндекс (важно: --type files, см. скилл)
+ast-index rebuild                       # полный переиндекс
 ```
 
 Установка: `cargo install --git https://github.com/defendend/Claude-ast-index-search ast-index`.
-Индекс в `~/.cache/ast-index/`, конфиг exclude — `.ast-index.yaml` в корне.
+Индекс в `~/.cache/ast-index/`, конфиг не нужен. `node_modules/**/*.d.ts`
+индексируются намеренно — дают API зависимостей в search/explore.
 Запросы — терминами кода (англ.), не русской прозой.
 
 ### OpenSpec — spec-driven development
