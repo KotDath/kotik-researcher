@@ -1,0 +1,63 @@
+{
+  "asOf": "2026-07-29",
+  "models": {
+    "kimi-for-coding/k3": {
+      "label": "Kimi K3",
+      "inputMiss": 3,
+      "inputHit": 0.3,
+      "output": 15,
+      "source": "https://www.kimi.com/help/kimi-api/api-pricing"
+    },
+    "opencode-go/deepseek-v4-flash": {
+      "label": "DeepSeek V4",
+      "inputMiss": 0.14,
+      "inputHit": 0.0028,
+      "output": 0.28,
+      "source": "https://api-docs.deepseek.com/quick_start/pricing"
+    },
+    "opencode-go/deepseek-v4-pro": {
+      "label": "DeepSeek V4",
+      "inputMiss": 0.435,
+      "inputHit": 0.003625,
+      "output": 0.87,
+      "source": "https://api-docs.deepseek.com/quick_start/pricing"
+    },
+    "deepseek/deepseek-v4-pro": {
+      "label": "DeepSeek V4",
+      "inputMiss": 0.435,
+      "inputHit": 0.003625,
+      "output": 0.87,
+      "source": "https://api-docs.deepseek.com/quick_start/pricing"
+    },
+    "openai/gpt-5.6-sol": {
+      "label": "GPT-5.6 Sol",
+      "inputMiss": 5,
+      "inputHit": 0.5,
+      "output": 30,
+      "longContextThreshold": 272000,
+      "longContextInputMultiplier": 2,
+      "longContextOutputMultiplier": 1.5,
+      "source": "https://developers.openai.com/api/docs/models/gpt-5.6-sol"
+    },
+    "openai/gpt-5.6-terra": {
+      "label": "GPT-5.6 Terra",
+      "inputMiss": 2.5,
+      "inputHit": 0.25,
+      "output": 15,
+      "longContextThreshold": 272000,
+      "longContextInputMultiplier": 2,
+      "longContextOutputMultiplier": 1.5,
+      "source": "https://developers.openai.com/api/docs/models/compare"
+    },
+    "openai/gpt-5.6-luna": {
+      "label": "GPT-5.6 Luna",
+      "inputMiss": 1,
+      "inputHit": 0.1,
+      "output": 6,
+      "longContextThreshold": 272000,
+      "longContextInputMultiplier": 2,
+      "longContextOutputMultiplier": 1.5,
+      "source": "https://developers.openai.com/api/docs/models/compare"
+    }
+  }
+}
