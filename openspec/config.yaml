@@ -1,0 +1,33 @@
+schema: spec-driven
+
+# Project context: показывается AI при создании артефактов (proposal, specs, design, tasks).
+context: |
+  Проект: kotik-researcher — десктоп-чат с DeepSeek, задел под исследовательскую платформу.
+  Стек: Rust (Cargo workspace в src-tauri: kotik-core / kotik-agent-rig / kotik-cli),
+  Tauri 2, React 19 + Vite (JavaScript, не TypeScript).
+  Главный инвариант: ядро ≠ агент ≠ UI; kotik-core не импортирует Rig/Tauri;
+  новый функционал сначала работает через kotik-cli (TUI-first), UI — тонкий адаптер.
+  Definition of Done: cargo test, clippy -D warnings, fmt --check, npm run lint, npm run build.
+  Полные правила и карта проекта — в AGENTS.md корня репозитория.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing

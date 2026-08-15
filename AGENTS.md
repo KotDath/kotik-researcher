@@ -43,10 +43,20 @@ src-tauri/                  # Cargo workspace
 ├── crates/kotik-agent-rig/ # адаптер Rig (DeepSeek), реализует ChatAgent
 ├── crates/kotik-cli/       # headless чат в терминале (TUI-first harness)
 └── tauri.conf.json         # devUrl :1420, frontendDist ../dist
+openspec/                   # SDD: спеки и changes (OpenSpec, ванильный workflow)
+├── specs/                  # действующие требования (source of truth по поведению)
+├── changes/                # активные changes; archive/ — история решений
+└── config.yaml             # схема + project context для AI
 .opencode/
+├── skills/ast-index/       # структурный поиск кода (порт плагина defendend/ast-index)
 ├── skills/kotik-reflect/   # ретроспектива сессий (session-digest.mjs + correction-phrases.txt)
 ├── skills/kotik-usage/     # отчёт по токенам/стоимости (usage-report.mjs + pricing.json)
+├── skills/openspec-*/      # workflow-скиллы OpenSpec (сгенерированы openspec init)
+├── commands/opsx-*.md      # slash-команды OpenSpec (сгенерированы)
+├── commands/kotik-*.md     # slash-команды скиллов reflect/usage
 └── agents/reflector.md     # субагент анализа дайджестов (deepseek-v4-flash)
+opencode.json               # разрешения: ast-index — bash без подтверждения
+.ast-index.yaml             # exclude-правила индекса ast-index (node_modules, target, ...)
 eslint.config.js            # flat config ESLint (eslint 9 + eslint-plugin-react)
 ```
 
@@ -90,6 +100,54 @@ npm run build
 (`deepseek::Client::from_env()`). Ключи не храним, не коммитим, не пишем
 в логи.
 
+## Инструменты разработки
+
+### ast-index — структурный поиск кода
+
+PRIMARY-инструмент навигации по коду (вместо grep по символам). Скилл:
+`.opencode/skills/ast-index/SKILL.md` — там critical rules, команды,
+ограничения. Кратко:
+
+```bash
+ast-index explore "stream chat reply"   # one-shot контекст по области кода
+ast-index usages ChatAgent              # все использования перед рефакторингом
+ast-index refs send_message             # определения + импорты + usages
+ast-index map                           # карта проекта
+ast-index update                        # инкрементально после правок
+ast-index rebuild --type files          # полный переиндекс (важно: --type files, см. скилл)
+```
+
+Установка: `cargo install --git https://github.com/defendend/Claude-ast-index-search ast-index`.
+Индекс в `~/.cache/ast-index/`, конфиг exclude — `.ast-index.yaml` в корне.
+Запросы — терминами кода (англ.), не русской прозой.
+
+### OpenSpec — spec-driven development
+
+Спеки и changes живут в `openspec/`; workflow-команды `/opsx:*` доступны
+в opencode (сгенерированы `openspec init`, не редактировать — перезапишутся
+при `openspec update`).
+
+**Когда spec обязателен:** фичи, меняющие контракты (`kotik-core`), порты,
+архитектуру, доменную модель. **Когда не нужен:** багфиксы, рефакторинг без
+смены поведения, мелкие UI-правки, документация.
+
+**Цикл:**
+1. `/opsx:explore <идея>` — необязательный, но рекомендуемый шаг: обсудить
+   подход до артефактов (прочитает код, предложит варианты).
+2. `/opsx:propose <что строим>` — создаёт `openspec/changes/<name>/`:
+   proposal.md (что и зачем), specs/ (требования SHALL + сценарии WHEN/THEN),
+   design.md (как), tasks.md (чеклист). **Код на этом шаге не пишется.**
+3. Ревью артефактов глазами → правки → только потом реализация.
+4. `/opsx:apply` — реализация по tasks.md (помечать выполненные задачи).
+5. `/opsx:archive` — перенос change в `changes/archive/`, дельты спек
+   сливаются в `openspec/specs/`.
+
+Проверки: `openspec list`, `openspec status --change <name>`,
+`openspec validate <name>`. Контекст проекта для AI — `openspec/config.yaml`.
+
+Отложено осознанно (после пилота): профили/оркестрация из backup-ветки,
+кастомные схемы OpenSpec.
+
 ## Зависимости и где по ним смотреть информацию
 
 | Зависимость | Версия | Где смотреть |
@@ -101,6 +159,8 @@ npm run build
 | Vite | 8 | https://vite.dev |
 | DeepSeek API | v4 | https://api-docs.deepseek.com |
 | Node.js | 24 | Скрипты скиллов используют `node:sqlite` — требуется Node ≥ 22.5 |
+| ast-index | 3.50 | CLI без crates.io: исходники `~/Documents/Claude-ast-index-search` (тег v3.50.0) или GitHub. Скилл — `.opencode/skills/ast-index/` |
+| OpenSpec | 1.9 | https://openspec.dev/docs — workflow `/opsx:*`, кастомизация через `openspec/config.yaml` |
 
 ## Команды
 
