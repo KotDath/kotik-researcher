@@ -1,0 +1,12 @@
+[package]
+name = "kotik-core"
+version = "0.1.0"
+edition = "2021"
+description = "Контракты и use cases исследовательского ядра kotik. Не зависит от Rig, Tauri и UI."
+
+[dependencies]
+futures-core = "0.3"
+
+[dev-dependencies]
+futures-util = "0.3"
+tokio = { version = "1", features = ["macros", "rt"] }

@@ -1,0 +1,11 @@
+[package]
+name = "kotik-cli"
+version = "0.1.0"
+edition = "2021"
+description = "Headless-чат в терминале: TUI-first harness для ядра kotik."
+
+[dependencies]
+kotik-agent-rig = { path = "../kotik-agent-rig" }
+kotik-core = { path = "../kotik-core" }
+futures = "0.3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

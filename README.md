@@ -16,9 +16,20 @@ npm run tauri dev
 
 ## Как устроено
 
-- `src/` — React UI: список сообщений, поле ввода, рендер markdown, стриминг чанков через `Channel` из `@tauri-apps/api`.
-- `src-tauri/src/lib.rs` — Tauri-команда `send_message(history, prompt, on_chunk)`: создаёт DeepSeek-клиент Rig (ключ из `DEEPSEEK_API_KEY`), шлёт запрос к модели `deepseek-v4-flash` и стримит текстовые чанки во фронтенд.
+Архитектурный инвариант: **ядро отделено от агента и от UI** (см. `docs/adr/0001-stack-rig-tauri-react.md`).
+
+- `src-tauri/crates/kotik-core` — контракты и порт `ChatAgent`; не зависит от Rig/Tauri, тестируется мок-агентом.
+- `src-tauri/crates/kotik-agent-rig` — адаптер Rig: DeepSeek-клиент (ключ из `DEEPSEEK_API_KEY`), модель `deepseek-v4-flash`, стриминг.
+- `src-tauri/crates/kotik-cli` — чат в терминале (TUI-first harness, весь функционал доступен без UI).
+- `src-tauri/src/lib.rs` — Tauri-команда `send_message`, тонкий IPC-адаптер поверх ядра.
+- `src/` — React UI: список сообщений, рендер markdown, стриминг чанков через `Channel` из `@tauri-apps/api`.
 - История чата хранится на фронтенде и передаётся в команду целиком.
+
+Чат в терминале без UI:
+
+```bash
+cargo run --manifest-path src-tauri/Cargo.toml -p kotik-cli
+```
 
 ## Сборка
 

@@ -1,0 +1,10 @@
+[package]
+name = "kotik-agent-rig"
+version = "0.1.0"
+edition = "2021"
+description = "Адаптер Rig (DeepSeek) к порту ChatAgent из kotik-core."
+
+[dependencies]
+kotik-core = { path = "../kotik-core" }
+rig = { package = "rig-core", version = "0.41" }
+futures = "0.3"

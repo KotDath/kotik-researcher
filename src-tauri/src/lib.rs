@@ -1,56 +1,50 @@
+//! Tauri-адаптер kotik: тонкий IPC-мост между React UI и kotik-core.
+//!
+//! Бизнес-логики здесь нет: команда маппит DTO в контракты ядра,
+//! вызывает порт `ChatAgent` и стримит события во фронтенд.
+
 use futures::StreamExt;
-use rig::prelude::*;
-use rig::providers::deepseek;
-use rig::streaming::StreamedAssistantContent;
+use kotik_agent_rig::RigChatAgent;
+use kotik_core::{ChatAgent, ChatEvent, ChatMessage};
 use serde::Deserialize;
 use tauri::ipc::Channel;
 
-const PREAMBLE: &str = "Ты — полезный ассистент. Отвечай на языке пользователя.";
-
+/// DTO сообщения, как оно приходит с фронтенда.
 #[derive(Deserialize)]
-struct ChatMessage {
+struct ChatMessageDto {
     role: String,
     content: String,
 }
 
-/// Отправляет сообщение в DeepSeek и стримит текстовые чанки ответа
+/// Отправляет сообщение агенту и стримит текстовые чанки ответа
 /// во фронтенд через `on_chunk`.
 #[tauri::command]
 async fn send_message(
-    history: Vec<ChatMessage>,
+    history: Vec<ChatMessageDto>,
     prompt: String,
     on_chunk: Channel<String>,
 ) -> Result<(), String> {
-    let client = deepseek::Client::from_env()
-        .map_err(|e| format!("не удалось создать DeepSeek-клиент: {e}"))?;
-    let model = client.completion_model(deepseek::DEEPSEEK_V4_FLASH);
+    let agent = RigChatAgent::from_env().map_err(|e| e.to_string())?;
 
-    let messages: Vec<Message> = history
+    let history: Vec<ChatMessage> = history
         .into_iter()
         .map(|m| match m.role.as_str() {
-            "assistant" => Message::assistant(m.content),
-            _ => Message::user(m.content),
+            "assistant" => ChatMessage::assistant(m.content),
+            _ => ChatMessage::user(m.content),
         })
         .collect();
 
-    let mut stream = model
-        .completion_request(prompt)
-        .preamble(PREAMBLE.to_string())
-        .messages(messages)
-        .stream()
+    let mut stream = agent
+        .stream_reply(history, prompt)
         .await
-        .map_err(|e| format!("ошибка запроса к DeepSeek: {e}"))?;
+        .map_err(|e| e.to_string())?;
 
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(StreamedAssistantContent::Text(text)) => {
-                on_chunk
-                    .send(text.text)
-                    .map_err(|e| format!("не удалось отправить чанк во фронтенд: {e}"))?;
-            }
-            // Тул-коллы, reasoning и служебные события в базовом чате игнорируем
-            Ok(_) => {}
-            Err(e) => return Err(format!("ошибка стрима: {e}")),
+    while let Some(event) = stream.next().await {
+        match event {
+            Ok(ChatEvent::Chunk(text)) => on_chunk
+                .send(text)
+                .map_err(|e| format!("не удалось отправить чанк во фронтенд: {e}"))?,
+            Err(e) => return Err(e.to_string()),
         }
     }
 
