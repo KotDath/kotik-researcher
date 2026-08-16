@@ -24,7 +24,7 @@ KaTeX/PDF/canvas потребуется отдельная проверка); с
 
 Осознанно отложено до первых research-фич: typed artifacts
 (ResearchIntent/Evidence/Claim), event log, SQLite, генерация TS-типов,
-полноценный TUI (ratatui), Python sandbox. **Не вводить раньше времени.**
+Python sandbox. **Не вводить раньше времени.**
 
 Открытый вопрос: долгосрочная память проекта (уроки, решения, контекст) —
 формат не выбран, решить осознанно отдельной задачей.
@@ -41,7 +41,9 @@ src-tauri/                  # Cargo workspace
 ├── crates/kotik-core/      # контракты (ChatMessage, ChatEvent, ChatError) + порт ChatAgent.
 │                           # Чистый Rust: БЕЗ Rig, Tauri, UI
 ├── crates/kotik-agent-rig/ # адаптер Rig (DeepSeek), реализует ChatAgent
-├── crates/kotik-cli/       # headless чат в терминале (TUI-first harness)
+├── crates/kotik-cli/       # полноценный TUI-чат на ratatui (TUI-first harness):
+│                           # main.rs — цикл событий/терминал, app.rs — чистое состояние,
+│                           # ui.rs — отрисовка кадра
 └── tauri.conf.json         # devUrl :1420, frontendDist ../dist
 openspec/                   # SDD: спеки и changes (OpenSpec, ванильный workflow)
 ├── specs/                  # действующие требования (source of truth по поведению)
@@ -154,6 +156,8 @@ ast-index rebuild                       # полный переиндекс
 |---|---|---|
 | `rig-core` (как `rig`) | 0.41 | ⚠️ API нестабилен. Только исходники закреплённой версии: `~/.cargo/registry/src/*/rig-core-0.41.0/` или docs.rs/rig-core/**0.41.0**. Докам с main-branch НЕ верить — типы стриминга уже переименованы |
 | `tauri` | 2 | https://tauri.app, схема конфига: https://schema.tauri.app/config/2 |
+| `ratatui` | 0.29 | https://ratatui.rs — используется unstable-фича `rendered-line-info` (`Paragraph::line_count` для скролла); при апгрейде проверять `kotik-cli/src/ui.rs` |
+| `crossterm` | 0.28 | https://docs.rs/crossterm — версия обязана совпадать с бэкенд-зависимостью ratatui (проверка: `cargo tree -i crossterm`) |
 | `@tauri-apps/api` | 2 | https://tauri.app/reference/javascript/ — `invoke`, `Channel` |
 | React | 19 | https://react.dev |
 | Vite | 8 | https://vite.dev |

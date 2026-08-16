@@ -9,3 +9,6 @@ kotik-agent-rig = { path = "../kotik-agent-rig" }
 kotik-core = { path = "../kotik-core" }
 futures = "0.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+# unstable-rendered-line-info: Paragraph::line_count нужен для скролла истории (ui.rs).
+ratatui = { version = "0.29", features = ["unstable-rendered-line-info"] }
+crossterm = { version = "0.28", features = ["event-stream"] }

@@ -1,7 +1,0 @@
-# Конфиг ast-index для этого репозитория.
-# Индекс сам лежит в ~/.cache/ast-index/<hash>/index.db (вне репо).
-exclude:
-  - node_modules
-  - dist
-  - src-tauri/target
-  - src-tauri/gen
