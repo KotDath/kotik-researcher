@@ -1,0 +1,117 @@
+main {
+  width: min(680px, calc(100% - 40px));
+  margin: auto;
+}
+
+.eyebrow,
+.endpoint,
+.status-label {
+  font-family: var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.eyebrow {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+h1 {
+  margin: 0 0 48px;
+  font-size: clamp(2.5rem, 8vw, 5.5rem);
+  font-weight: 500;
+  letter-spacing: -0.07em;
+  line-height: 0.9;
+}
+
+.status-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  box-shadow: 8px 8px 0 var(--shadow);
+}
+
+.indicator {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.indicator--checking {
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+.indicator--online {
+  background: var(--online);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--online) 18%, transparent);
+}
+
+.indicator--offline {
+  background: var(--offline);
+}
+
+.status-label {
+  margin: 0 0 4px;
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+.status-value {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+button {
+  border: 1px solid var(--line);
+  padding: 8px 12px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:hover {
+  color: var(--surface);
+  background: var(--text);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--online);
+  outline-offset: 3px;
+}
+
+.endpoint {
+  margin: 20px 0 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+  text-align: right;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (max-width: 520px) {
+  .status-card {
+    grid-template-columns: auto 1fr;
+  }
+
+  .status-card button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .indicator--checking {
+    animation: none;
+  }
+}

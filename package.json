@@ -1,0 +1,17 @@
+{
+  "name": "kotik-researcher",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "concurrently --kill-others --names server,web \"pnpm dev:server\" \"pnpm dev:web\"",
+    "dev:server": "go run ./cmd/kotik-researcher -addr=127.0.0.1:8080 -open=false",
+    "dev:web": "pnpm --filter @kotik/web dev",
+    "build:web": "pnpm --filter @kotik/web build",
+    "build": "pnpm build:web && go build -tags production -o kotik-researcher ./cmd/kotik-researcher",
+    "lint": "pnpm --filter @kotik/web lint && go vet ./...",
+    "test": "go test ./... && pnpm build:web && go test -tags production ./..."
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.5"
+  }
+}

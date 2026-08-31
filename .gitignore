@@ -1,0 +1,6 @@
+node_modules/
+cmd/kotik-researcher/web/
+/kotik-researcher
+coverage.out
+*.log
+.DS_Store
