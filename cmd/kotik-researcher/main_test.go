@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestValidateLoopbackAddress(t *testing.T) {
 	tests := []struct {
@@ -24,4 +27,25 @@ func TestValidateLoopbackAddress(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestDeepSeekAPIKey(t *testing.T) {
+	t.Run("missing", func(t *testing.T) {
+		t.Setenv("DEEPSEEK_API_KEY", "")
+		_, err := deepSeekAPIKey()
+		if err == nil || !strings.Contains(err.Error(), "DEEPSEEK_API_KEY") {
+			t.Fatalf("error = %v, want missing key error", err)
+		}
+	})
+
+	t.Run("available", func(t *testing.T) {
+		t.Setenv("DEEPSEEK_API_KEY", "  test-key  ")
+		key, err := deepSeekAPIKey()
+		if err != nil {
+			t.Fatalf("deepSeekAPIKey() error = %v", err)
+		}
+		if key != "test-key" {
+			t.Fatalf("key = %q, want test-key", key)
+		}
+	})
 }

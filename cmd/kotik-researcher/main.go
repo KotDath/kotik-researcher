@@ -11,9 +11,11 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
+	"github.com/KotDath/kotik-researcher/internal/deepseek"
 	"github.com/KotDath/kotik-researcher/internal/httpapi"
 )
 
@@ -31,6 +33,10 @@ func run() error {
 	if err := validateLoopbackAddress(*address); err != nil {
 		return err
 	}
+	apiKey, err := deepSeekAPIKey()
+	if err != nil {
+		return err
+	}
 
 	listener, err := net.Listen("tcp", *address)
 	if err != nil {
@@ -38,7 +44,7 @@ func run() error {
 	}
 
 	server := &http.Server{
-		Handler:           httpapi.New(newWebHandler()),
+		Handler:           httpapi.New(newWebHandler(), deepseek.New(apiKey)),
 		ReadHeaderTimeout: 5 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
@@ -75,6 +81,14 @@ func run() error {
 	}
 
 	return nil
+}
+
+func deepSeekAPIKey() (string, error) {
+	apiKey := strings.TrimSpace(os.Getenv("DEEPSEEK_API_KEY"))
+	if apiKey == "" {
+		return "", errors.New("DEEPSEEK_API_KEY is not set")
+	}
+	return apiKey, nil
 }
 
 func validateLoopbackAddress(address string) error {
