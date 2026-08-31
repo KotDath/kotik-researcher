@@ -7,6 +7,7 @@ permission:
     "*": deny
   task:
     "*": deny
+    explore: allow
   bash:
     "*": deny
     "node .opencode/skills/kotik-reflect/scripts/session-digest.mjs*": allow

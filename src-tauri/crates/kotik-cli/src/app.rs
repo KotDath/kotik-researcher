@@ -8,7 +8,7 @@ use kotik_core::ChatMessage;
 
 /// Приветственная подсказка про клавиши (показывается системной записью при старте).
 pub const WELCOME: &str = "kotik-cli · deepseek-v4-flash\n\
-Enter — отправить · Alt+Enter / Ctrl+J — новая строка · \
+Enter — отправить · Alt+Enter / Ctrl+J — новая строка · Esc — отменить ответ · \
 PgUp/PgDown, ↑/↓ — скролл · /exit или Ctrl+C — выход";
 
 /// Сколько строк истории прокручивает PgUp/PgDown.
@@ -35,6 +35,8 @@ pub struct Entry {
 pub enum Action {
     /// Отправить сообщение агенту.
     Submit(String),
+    /// Отменить текущий стриминг ответа (Esc во время стрима).
+    Cancel,
     /// Выйти из приложения.
     Quit,
 }
@@ -125,6 +127,9 @@ impl App {
                 }
                 Some(Action::Submit(self.submit()))
             }
+            // Esc отменяет текущий стрим (design D4); вне стриминга Esc
+            // попадает в `_ => None` — игнорируется, поле ввода не трогается.
+            (KeyCode::Esc, _) if self.streaming => Some(Action::Cancel),
             (KeyCode::Char(c), m) if !m.contains(KeyModifiers::CONTROL) => {
                 self.insert(c);
                 None
@@ -219,6 +224,22 @@ impl App {
         self.entries.push(Entry {
             role: EntryRole::System,
             text: format!("ошибка: {error}"),
+        });
+    }
+
+    /// Отмена стрима пользователем (Esc): частичный ответ остаётся в истории
+    /// экрана, пара «вопрос-ответ» не коммитится в контекст агента (design D2).
+    pub fn on_cancel(&mut self) {
+        if !self.streaming {
+            return;
+        }
+        self.streaming = false;
+        self.reply_open = false;
+        self.pending_prompt = None;
+        self.scroll = None;
+        self.entries.push(Entry {
+            role: EntryRole::System,
+            text: "ответ отменён".to_string(),
         });
     }
 
@@ -467,5 +488,123 @@ mod tests {
         assert!(app.scroll().is_some());
         exchange(&mut app, "привет", &["ок"]);
         assert_eq!(app.scroll(), None);
+    }
+
+    #[test]
+    fn esc_during_streaming_cancels_keeps_partial_reply_and_resumes() {
+        let mut app = App::new();
+        type_text(&mut app, "вопрос");
+        app.on_key(key(KeyCode::Enter));
+        app.on_chunk("части");
+        app.on_chunk("чный");
+
+        assert_eq!(app.on_key(key(KeyCode::Esc)), Some(Action::Cancel));
+        app.on_cancel();
+
+        let roles: Vec<_> = app.entries().iter().map(|e| e.role).collect();
+        assert_eq!(
+            roles,
+            vec![
+                EntryRole::System, // WELCOME
+                EntryRole::User,
+                EntryRole::Assistant, // частичный ответ сохраняется
+                EntryRole::System,    // «ответ отменён»
+            ]
+        );
+        assert_eq!(app.entries()[2].text, "частичный");
+        let last = app.entries().last().unwrap();
+        assert_eq!(last.role, EntryRole::System);
+        assert!(last.text.contains("отменён"));
+        assert!(!app.streaming());
+        assert!(app.history().is_empty(), "история агента не загрязнена");
+
+        // Диалог можно продолжить: новая пара коммитится, частичный ответ не тронут.
+        exchange(&mut app, "дальше", &["ок"]);
+        assert_eq!(app.entries()[2].text, "частичный");
+        assert_eq!(app.history().len(), 2);
+    }
+
+    #[test]
+    fn cancel_before_first_chunk_has_no_assistant_entry() {
+        let mut app = App::new();
+        type_text(&mut app, "вопрос");
+        app.on_key(key(KeyCode::Enter));
+
+        assert_eq!(app.on_key(key(KeyCode::Esc)), Some(Action::Cancel));
+        app.on_cancel();
+
+        let roles: Vec<_> = app.entries().iter().map(|e| e.role).collect();
+        assert_eq!(
+            roles,
+            vec![EntryRole::System, EntryRole::User, EntryRole::System]
+        );
+        let last = app.entries().last().unwrap();
+        assert_eq!(last.role, EntryRole::System);
+        assert!(last.text.contains("отменён"));
+        assert!(app.history().is_empty());
+    }
+
+    #[test]
+    fn esc_outside_streaming_is_ignored() {
+        // Вне стриминга Esc не возвращает действие и не трогает поле ввода.
+        let mut app = App::new();
+        type_text(&mut app, "текст");
+        assert_eq!(app.on_key(key(KeyCode::Esc)), None);
+        assert_eq!(app.input(), "текст");
+
+        // После успешно завершённого стрима — тоже без эффекта.
+        let mut app = App::new();
+        exchange(&mut app, "вопрос", &["ок"]);
+        let len = app.entries().len();
+        assert_eq!(app.on_key(key(KeyCode::Esc)), None);
+        assert_eq!(app.entries().len(), len, "дополнительных записей нет");
+
+        // После отмены повторный Esc — без эффекта.
+        let mut app = App::new();
+        type_text(&mut app, "ещё");
+        app.on_key(key(KeyCode::Enter));
+        app.on_chunk("часть");
+        assert_eq!(app.on_key(key(KeyCode::Esc)), Some(Action::Cancel));
+        app.on_cancel();
+        let len = app.entries().len();
+        assert_eq!(app.on_key(key(KeyCode::Esc)), None);
+        assert_eq!(app.entries().len(), len);
+    }
+
+    #[test]
+    fn cancel_preserves_typed_input_and_reattaches_scroll() {
+        let mut app = App::new();
+        type_text(&mut app, "вопрос");
+        app.on_key(key(KeyCode::Enter));
+        // Пока стрим идёт, пользователь набирает следующее сообщение и отматывает вверх.
+        type_text(&mut app, "черновик");
+        app.on_key(key(KeyCode::PageUp));
+        assert!(app.scroll().is_some());
+
+        assert_eq!(app.on_key(key(KeyCode::Esc)), Some(Action::Cancel));
+        app.on_cancel();
+
+        assert_eq!(app.input(), "черновик", "набранный ввод сохраняется");
+        assert_eq!(app.scroll(), None, "скролл прилипает к низу");
+    }
+
+    #[test]
+    fn late_messages_after_cancel_are_noop() {
+        let mut app = App::new();
+        type_text(&mut app, "вопрос");
+        app.on_key(key(KeyCode::Enter));
+        app.on_chunk("частичный");
+        assert_eq!(app.on_key(key(KeyCode::Esc)), Some(Action::Cancel));
+        app.on_cancel();
+
+        let len = app.entries().len();
+        // Запоздалые сообщения из прерванной задачи: no-op (design D3).
+        app.on_chunk("запоздалый");
+        app.on_stream_done();
+        app.on_stream_error("поздняя ошибка");
+
+        assert_eq!(app.entries().len(), len, "запоздалые сообщения отброшены");
+        assert!(!app.streaming());
+        assert!(app.history().is_empty());
     }
 }

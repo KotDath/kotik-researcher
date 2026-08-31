@@ -50,14 +50,23 @@ openspec/                   # SDD: спеки и changes (OpenSpec, ваниль
 ├── changes/                # активные changes; archive/ — история решений
 └── config.yaml             # схема + project context для AI
 .opencode/
+├── agents/orchestrator.md      # PRIMARY: роутинг, гейты, делегирование; src/ deny
+├── agents/spec-writer.md       # grill-опрос + артефакты change через openspec CLI (k3)
+├── agents/implementer.md       # standard-реализация (deepseek-v4-flash)
+├── agents/implementer-deep.md  # deep-реализация (k3)
+├── agents/reviewer.md          # независимое код-ревью (openai/gpt-5.6-sol)
+├── agents/technical-consultant.md # read-only консультант для implementer'а (k3)
+├── agents/reflector.md         # субагент анализа дайджестов (deepseek-v4-flash)
+
+# Модели задаются явно в frontmatter каждого агента (единственное место правды
+# — там и в этой карте); агент без model унаследует k3 оркестратора.
 ├── skills/ast-index/       # структурный поиск кода (порт плагина defendend/ast-index)
 ├── skills/kotik-reflect/   # ретроспектива сессий (session-digest.mjs + correction-phrases.txt)
 ├── skills/kotik-usage/     # отчёт по токенам/стоимости (usage-report.mjs + pricing.json)
 ├── skills/openspec-*/      # workflow-скиллы OpenSpec (сгенерированы openspec init)
 ├── commands/opsx-*.md      # slash-команды OpenSpec (сгенерированы)
-├── commands/kotik-*.md     # slash-команды скиллов reflect/usage
-└── agents/reflector.md     # субагент анализа дайджестов (deepseek-v4-flash)
-opencode.json               # разрешения: ast-index — bash без подтверждения
+└── commands/kotik-*.md     # slash-команды скиллов reflect/usage
+opencode.json               # subagent_depth: 3 (вложенность ролей), explore — deepseek-v4-flash; разрешения: ast-index — bash без подтверждения
 eslint.config.js            # flat config ESLint (eslint 9 + eslint-plugin-react)
 ```
 
@@ -133,22 +142,36 @@ ast-index rebuild                       # полный переиндекс
 архитектуру, доменную модель. **Когда не нужен:** багфиксы, рефакторинг без
 смены поведения, мелкие UI-правки, документация.
 
-**Цикл:**
-1. `/opsx:explore <идея>` — необязательный, но рекомендуемый шаг: обсудить
-   подход до артефактов (прочитает код, предложит варианты).
-2. `/opsx:propose <что строим>` — создаёт `openspec/changes/<name>/`:
-   proposal.md (что и зачем), specs/ (требования SHALL + сценарии WHEN/THEN),
-   design.md (как), tasks.md (чеклист). **Код на этом шаге не пишется.**
-3. Ревью артефактов глазами → правки → только потом реализация.
-4. `/opsx:apply` — реализация по tasks.md (помечать выполненные задачи).
-5. `/opsx:archive` — перенос change в `changes/archive/`, дельты спек
-   сливаются в `openspec/specs/`.
+**Цикл (основной режим — агент `orchestrator`, процедура —
+`.opencode/agents/orchestrator.md`):**
+1. Explore — режим оркестратора, НЕ гейт: для неясных/крупных идей —
+   обсудить подход до артефактов. Механическая разведка кода — встроенный
+   explore-субагент.
+2. Скаффолд `openspec new change` + vision.md (дистиллят explore, если был)
+   — оркестратор. Routing card: Profile/Size/Risk/Implementation.
+3. `/opsx:propose` → **spec-writer** ведёт grill-опрос пользователя
+   итеративными раундами (скоуп, критерии приёмки как наблюдаемые свойства,
+   non-goals, граничные случаи, UX, режимы отказа) и создаёт артефакты
+   через openspec CLI. Артефакты не создаются, пока открыты вопросы,
+   влияющие на объём или критерии приёмки. **Код на этом шаге не пишется.**
+4. Spec review packet от оркестратора → правки (resume spec-writer по
+   task_id) → явный approve пользователя.
+5. `/opsx:apply` → реализация делегируется implementer'у (standard) или
+   implementer-deep (deep) по routing card; чекбоксы tasks.md, DoD. Затем
+   ревью-гейт: **reviewer** против спеки, цикл исправлений ≤3 итераций.
+6. `/opsx:archive` — оркестратор: sync спек, `openspec validate`, перенос
+   в `changes/archive/`.
+
+Fallback-режим: build-агент с ванильными `/opsx:*` (как раньше) — для
+мелочи и на случай отладки ролей. Если question tool субагенту недоступен —
+grill ведёт оркестратор, spec-writer оформляет (зафиксировано в
+orchestrator.md).
 
 Проверки: `openspec list`, `openspec status --change <name>`,
 `openspec validate <name>`. Контекст проекта для AI — `openspec/config.yaml`.
 
-Отложено осознанно (после пилота): профили/оркестрация из backup-ветки,
-кастомные схемы OpenSpec.
+Отложено осознанно: кастомные схемы OpenSpec; расширение ролей из
+backup-ветки (консилиум, app-tester, ui-reviewer) — только отдельным change.
 
 ## Зависимости и где по ним смотреть информацию
 

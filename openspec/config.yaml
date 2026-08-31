@@ -7,6 +7,9 @@ context: |
   Tauri 2, React 19 + Vite (JavaScript, не TypeScript).
   Главный инвариант: ядро ≠ агент ≠ UI; kotik-core не импортирует Rig/Tauri;
   новый функционал сначала работает через kotik-cli (TUI-first), UI — тонкий адаптер.
+  Процесс: SDD-цикл ведёт primary-оркестратор (.opencode/agents/orchestrator.md):
+  артефакты пишет spec-writer после grill-опроса, код — implementer по routing card
+  из proposal (Implementation: standard|deep), ревью — reviewer.
   Definition of Done: cargo test, clippy -D warnings, fmt --check, npm run lint, npm run build.
   Полные правила и карта проекта — в AGENTS.md корня репозитория.
 
