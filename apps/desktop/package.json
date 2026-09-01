@@ -1,0 +1,12 @@
+{
+  "name": "@kotik/desktop",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsup --config tsup.config.ts"
+  },
+  "dependencies": {
+    "@kotik/server": "workspace:*"
+  }
+}

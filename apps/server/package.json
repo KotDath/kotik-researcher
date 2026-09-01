@@ -1,0 +1,16 @@
+{
+  "name": "@kotik/server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "dev": "tsx watch src/main.ts --port=8080 --open=false",
+    "build": "tsup --config tsup.config.ts"
+  },
+  "dependencies": {
+    "@kotik/agent": "workspace:*",
+    "@kotik/deepseek": "workspace:*",
+    "@kotik/protocol": "workspace:*"
+  }
+}

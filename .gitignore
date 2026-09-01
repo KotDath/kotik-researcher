@@ -1,7 +1,9 @@
 node_modules/
+apps/*/dist/
+release/
+coverage/
 cmd/kotik-researcher/web/
 /kotik-researcher
-coverage.out
 *.log
 .DS_Store
 .env

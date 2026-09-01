@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: '../../cmd/kotik-researcher/web',
+    outDir: 'dist',
     emptyOutDir: true,
   },
 })

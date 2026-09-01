@@ -1,17 +1,64 @@
 {
   "name": "kotik-researcher",
+  "version": "0.1.0",
+  "description": "Local browser and desktop client for a session-aware DeepSeek research agent",
+  "author": "KotDath",
   "private": true,
+  "type": "module",
+  "main": "apps/desktop/dist/main.cjs",
   "packageManager": "pnpm@10.33.0",
   "scripts": {
-    "dev": "concurrently --kill-others --names server,web \"pnpm dev:server\" \"pnpm dev:web\"",
-    "dev:server": "go run ./cmd/kotik-researcher -addr=127.0.0.1:8080 -open=false",
+    "dev": "pnpm dev:browser",
+    "dev:browser": "concurrently --kill-others --names server,web \"pnpm dev:server\" \"pnpm dev:web\"",
+    "dev:server": "pnpm --filter @kotik/server dev",
     "dev:web": "pnpm --filter @kotik/web dev",
+    "dev:electron": "pnpm --filter @kotik/desktop build && concurrently --kill-others --names web,electron \"pnpm --filter @kotik/web dev -- --no-open\" \"wait-on tcp:127.0.0.1:5173 && electron apps/desktop/dist/main.cjs\"",
     "build:web": "pnpm --filter @kotik/web build",
-    "build": "pnpm build:web && go build -tags production -o kotik-researcher ./cmd/kotik-researcher",
-    "lint": "pnpm --filter @kotik/web lint && go vet ./...",
-    "test": "go test ./... && pnpm build:web && go test -tags production ./..."
+    "build:server": "pnpm --filter @kotik/server build",
+    "build:desktop": "pnpm --filter @kotik/desktop build",
+    "build": "pnpm build:web && pnpm build:server",
+    "build:electron": "pnpm build:web && pnpm build:desktop && electron-builder --linux AppImage",
+    "build:electron:dir": "electron-builder --dir",
+    "start": "node apps/server/dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint apps packages",
+    "test": "vitest run",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm build:desktop && pnpm build:electron:dir"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
+    "@types/node": "^24.13.3",
+    "concurrently": "^10.0.5",
+    "electron": "^39.5.1",
+    "electron-builder": "^26.0.12",
+    "oxlint": "^1.79.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.20.6",
+    "typescript": "~6.0.2",
+    "vitest": "^4.0.18",
+    "wait-on": "^9.0.4"
+  },
+  "build": {
+    "appId": "com.kotik.researcher",
+    "productName": "kotik-researcher",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "apps/desktop/dist/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "apps/web/dist",
+        "to": "web"
+      }
+    ],
+    "linux": {
+      "category": "Utility",
+      "target": ["AppImage"]
+    }
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron", "esbuild"]
   }
 }
