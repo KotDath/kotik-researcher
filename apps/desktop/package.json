@@ -5,8 +5,5 @@
   "type": "module",
   "scripts": {
     "build": "tsup --config tsup.config.ts"
-  },
-  "dependencies": {
-    "@kotik/server": "workspace:*"
   }
 }

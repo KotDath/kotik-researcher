@@ -1,9 +1,12 @@
 node_modules/
 apps/*/dist/
+apps/desktop/bin/*
+!apps/desktop/bin/.gitkeep
 release/
 coverage/
 cmd/kotik-researcher/web/
 /kotik-researcher
+/kotik-agent
 *.log
 .DS_Store
 .env

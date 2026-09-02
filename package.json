@@ -10,20 +10,22 @@
   "scripts": {
     "dev": "pnpm dev:browser",
     "dev:browser": "concurrently --kill-others --names server,web \"pnpm dev:server\" \"pnpm dev:web\"",
-    "dev:server": "pnpm --filter @kotik/server dev",
+    "dev:server": "go run ./cmd/kotik-agent --addr=127.0.0.1:8080 --allowed-origin=http://127.0.0.1:5173 --open=false",
     "dev:web": "pnpm --filter @kotik/web dev",
-    "dev:electron": "pnpm --filter @kotik/desktop build && concurrently --kill-others --names web,electron \"pnpm --filter @kotik/web dev -- --no-open\" \"wait-on tcp:127.0.0.1:5173 && electron apps/desktop/dist/main.cjs\"",
+    "dev:electron": "pnpm build:agent:desktop && pnpm build:desktop && concurrently --kill-others --names web,electron \"pnpm --filter @kotik/web dev -- --no-open\" \"wait-on tcp:127.0.0.1:5173 && electron apps/desktop/dist/main.cjs\"",
     "build:web": "pnpm --filter @kotik/web build",
-    "build:server": "pnpm --filter @kotik/server build",
+    "build:agent": "node scripts/build-agent.mjs",
+    "build:agent:desktop": "node scripts/build-agent.mjs --desktop",
+    "build:agent:desktop:linux": "node scripts/build-agent.mjs --desktop --platform=linux",
     "build:desktop": "pnpm --filter @kotik/desktop build",
-    "build": "pnpm build:web && pnpm build:server",
-    "build:electron": "pnpm build:web && pnpm build:desktop && electron-builder --linux AppImage",
+    "build": "pnpm build:web && pnpm build:agent",
+    "build:electron": "pnpm build:web && pnpm build:agent:desktop:linux && pnpm build:desktop && electron-builder --linux AppImage",
     "build:electron:dir": "electron-builder --dir",
-    "start": "node apps/server/dist/main.js",
+    "start": "./kotik-agent --web-root=apps/web/dist",
     "typecheck": "tsc --noEmit",
-    "lint": "oxlint apps packages",
-    "test": "vitest run",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm build:desktop && pnpm build:electron:dir"
+    "lint": "oxlint apps packages && go vet ./...",
+    "test": "vitest run && go test ./...",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm build:agent:desktop && pnpm build:desktop && pnpm build:electron:dir"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",
@@ -32,7 +34,6 @@
     "electron-builder": "^26.0.12",
     "oxlint": "^1.79.0",
     "tsup": "^8.5.1",
-    "tsx": "^4.20.6",
     "typescript": "~6.0.2",
     "vitest": "^4.0.18",
     "wait-on": "^9.0.4"
@@ -51,6 +52,11 @@
       {
         "from": "apps/web/dist",
         "to": "web"
+      },
+      {
+        "from": "apps/desktop/bin",
+        "to": "bin",
+        "filter": ["kotik-agent*"]
       }
     ],
     "linux": {
