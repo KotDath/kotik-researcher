@@ -27,7 +27,8 @@ export class KotikClient {
   constructor(options: KotikClientOptions = {}) {
     this.#baseUrl = (options.baseUrl ?? '').replace(/\/$/, '')
     this.#accessToken = options.accessToken
-    this.#fetch = options.fetch ?? globalThis.fetch
+    const fetchImplementation = options.fetch ?? globalThis.fetch
+    this.#fetch = (input, init) => fetchImplementation.call(globalThis, input, init)
   }
 
   async createSession(options: CreateSessionOptions = {}): Promise<Session> {

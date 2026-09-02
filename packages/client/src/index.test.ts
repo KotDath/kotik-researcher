@@ -2,6 +2,26 @@ import { describe, expect, it, vi } from 'vitest'
 import { KotikClient } from './index.ts'
 
 describe('KotikClient', () => {
+  it('calls the browser fetch implementation with the global receiver', async () => {
+    const fetchMock = vi.fn(function (this: unknown): Promise<Response> {
+      if (this !== globalThis) {
+        throw new TypeError('fetch receiver is invalid')
+      }
+      return Promise.resolve(
+        Response.json({
+          session: { id: 'session-1', createdAt: '2026-09-01T12:00:00.000Z', messages: [] },
+        }),
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    try {
+      const client = new KotikClient()
+      await expect(client.createSession()).resolves.toMatchObject({ id: 'session-1' })
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('creates a session and parses a streamed turn', async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
