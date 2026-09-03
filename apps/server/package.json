@@ -5,7 +5,7 @@
   "type": "module",
   "exports": "./src/index.ts",
   "scripts": {
-    "dev": "tsx watch src/main.ts --port=8080 --open=false",
+    "dev": "tsx watch src/main.ts --port=18731 --open=false",
     "build": "tsup --config tsup.config.ts"
   },
   "dependencies": {

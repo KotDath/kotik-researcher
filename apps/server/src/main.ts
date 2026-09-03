@@ -36,7 +36,7 @@ async function main(): Promise<void> {
 }
 
 export function parseCLI(arguments_: string[]): CLIOptions {
-  const options: CLIOptions = { host: '127.0.0.1', port: 8080, open: true }
+  const options: CLIOptions = { host: '127.0.0.1', port: 18731, open: true }
   for (const argument of arguments_) {
     const [name, value] = argument.split('=', 2)
     if (name === '--host' && value) {
