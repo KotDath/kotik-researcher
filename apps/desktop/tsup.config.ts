@@ -8,5 +8,6 @@ export default defineConfig({
   outDir: 'dist',
   clean: true,
   external: ['electron'],
+  noExternal: ['@kotik/server', '@kotik/agent', '@kotik/deepseek', '@kotik/protocol'],
   outExtension: () => ({ js: '.cjs' }),
 })
